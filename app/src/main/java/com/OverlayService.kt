@@ -211,14 +211,14 @@ class OverlayService : Service(),
     private fun createButtons(){
 
         closeBtn = makeButton(R.string.overlay_close, Color.RED){ stopSelf() }
-        closeBtn.setPadding(0, 0, 0, 4)
+        closeBtn.translationY = -4f
 
         startBtn = makeButton(R.string.overlay_start, Color.WHITE){
             if (enableCapture()) {
                 updateStartButton(true)
             }
         }
-        startBtn.setPadding(0, 0, 0, 10)
+        startBtn.translationY = -10f
 
         modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN, 30f){
             cancelSequencePresentation()
@@ -239,7 +239,7 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        resetBtn.setPadding(0, 0, 0, 8)
+        resetBtn.translationY = -8f
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             drawView.adjustHorizontal(1f)
         }
