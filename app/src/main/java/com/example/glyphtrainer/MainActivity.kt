@@ -484,6 +484,12 @@ class DrawView : View {
         resetGlyphs()
     }
 
+    fun setGlyphScales(horizontal: Float, vertical: Float) {
+        horizontalScale = horizontal.coerceIn(0.5f, 1.8f)
+        verticalScale = vertical.coerceIn(0.5f, 1.8f)
+        invalidate()
+    }
+
     fun showCompletedSequence() {
         if (touchCount < maxTouches) return
 
@@ -539,15 +545,17 @@ class DrawView : View {
         currentPath.reset()
         invalidate()
     }
-    fun adjustHorizontal(direction: Float) {
+    fun adjustHorizontal(direction: Float): Float {
         horizontalScale += direction * 0.05f
         horizontalScale = horizontalScale.coerceIn(0.5f, 1.8f)
         invalidate()
+        return horizontalScale
     }
 
-    fun adjustVertical(direction: Float) {
+    fun adjustVertical(direction: Float): Float {
         verticalScale += direction * 0.05f
         verticalScale = verticalScale.coerceIn(0.5f, 1.8f)
         invalidate()
+        return verticalScale
     }
 }

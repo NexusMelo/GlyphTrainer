@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.RectF
+import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
 import android.text.SpannableString
@@ -20,6 +21,7 @@ import android.widget.TextView
 import android.graphics.Color
 import android.view.Gravity
 import androidx.annotation.StringRes
+import androidx.core.content.edit
 import com.example.glyphtrainer.AppMode
 import com.example.glyphtrainer.DrawView
 import com.example.glyphtrainer.R
@@ -30,6 +32,15 @@ class OverlayService : Service(),
     DrawView.OverlayListener {
 
     private companion object {
+        const val PREFERENCES_NAME = "glyph_trainer_state"
+        const val PREF_GLYPH_LIMIT = "glyph_limit"
+        const val PREF_HORIZONTAL_SCALE = "horizontal_scale"
+        const val PREF_VERTICAL_SCALE = "vertical_scale"
+        const val DEFAULT_GLYPH_LIMIT = 5
+        const val DEFAULT_SCALE = 1f
+        const val FLOATING_BUTTON_SIZE = 80
+        const val FLOATING_BUTTON_MARGIN = 24
+        const val FLOATING_BUTTON_TOP = 180
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 3_000L
         const val REPLAY_START_DELAY_MS = 1_000L
@@ -46,6 +57,7 @@ class OverlayService : Service(),
     private lateinit var startBtn: TextView
     private lateinit var modeBtn: TextView
     private lateinit var resetBtn: TextView
+    private lateinit var floatingBtn: TextView
     private lateinit var zoomHXPlus: TextView
     private lateinit var zoomHXMinus: TextView
     private lateinit var zoomVPlus: TextView
@@ -61,6 +73,7 @@ class OverlayService : Service(),
     private lateinit var startParams: WindowManager.LayoutParams
     private lateinit var modeParams: WindowManager.LayoutParams
     private lateinit var resetParams: WindowManager.LayoutParams
+    private lateinit var floatingParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
     private val buttonSize = 96
@@ -91,7 +104,10 @@ class OverlayService : Service(),
                 drawView.clearReplayGlyph()
                 replayGlyphVisible = false
 
-                if (replayIndex >= glyphLimit) return
+                if (replayIndex >= glyphLimit) {
+                    minimizeOverlay()
+                    return
+                }
 
                 mainHandler.postDelayed(this, REPLAY_GLYPH_GAP_MS)
                 return
@@ -123,10 +139,13 @@ class OverlayService : Service(),
         }
     }
 
-    private var glyphLimit = 5
+    private var glyphLimit = DEFAULT_GLYPH_LIMIT
+    private var horizontalScale = DEFAULT_SCALE
+    private var verticalScale = DEFAULT_SCALE
     private var capturing = false
     private var replayIndex = 0
     private var replayGlyphVisible = false
+    private var overlayMinimized = false
     private var creationFailed = false
     private var permissionListenerRegistered = false
 
@@ -145,11 +164,15 @@ class OverlayService : Service(),
         }
 
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        restorePreferences()
 
         createDrawLayer()
         if (creationFailed) return
 
         createButtons()
+        if (creationFailed) return
+
+        createFloatingButton()
         if (creationFailed) return
 
         disableCapture()
@@ -162,6 +185,8 @@ class OverlayService : Service(),
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!canUseOverlay() || creationFailed) {
             stopSelf()
+        } else if (overlayMinimized) {
+            restoreOverlay()
         }
 
         return START_NOT_STICKY
@@ -174,6 +199,8 @@ class OverlayService : Service(),
     private fun createDrawLayer(){
 
         drawView = DrawView(this, this)
+        drawView.setGlyphLimit(glyphLimit)
+        drawView.setGlyphScales(horizontalScale, verticalScale)
 
         drawParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -240,6 +267,7 @@ class OverlayService : Service(),
             disableCapture()
 
             glyphLimit = if (glyphLimit == 5) 3 else glyphLimit + 1
+            saveGlyphLimit()
 
             drawView.setGlyphLimit(glyphLimit)
 
@@ -256,19 +284,23 @@ class OverlayService : Service(),
         }
         shiftButtonSymbol(resetBtn, R.string.overlay_reset, -30)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
-            drawView.adjustHorizontal(1f)
+            horizontalScale = drawView.adjustHorizontal(1f)
+            saveGlyphScales()
         }
 
         zoomHXMinus = makeMenuButton(R.string.adjust_horizontal_decrease) {
-            drawView.adjustHorizontal(-1f)
+            horizontalScale = drawView.adjustHorizontal(-1f)
+            saveGlyphScales()
         }
 
         zoomVPlus = makeMenuButton(R.string.adjust_vertical_increase) {
-            drawView.adjustVertical(1f)
+            verticalScale = drawView.adjustVertical(1f)
+            saveGlyphScales()
         }
 
         zoomVMinus = makeMenuButton(R.string.adjust_vertical_decrease) {
-            drawView.adjustVertical(-1f)
+            verticalScale = drawView.adjustVertical(-1f)
+            saveGlyphScales()
         }
 
         zoomVMinus.post {
@@ -276,6 +308,37 @@ class OverlayService : Service(),
                 positionOverlayControls(drawArea)
             }
         }
+    }
+
+    private fun createFloatingButton() {
+        floatingBtn = TextView(this).apply {
+            textSize = 24f
+            setTextColor(Color.CYAN)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(120, 0, 0, 0))
+            }
+            visibility = View.GONE
+            setOnClickListener { restoreOverlay() }
+        }
+
+        floatingParams = WindowManager.LayoutParams(
+            FLOATING_BUTTON_SIZE,
+            FLOATING_BUTTON_SIZE,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = FLOATING_BUTTON_MARGIN
+            y = FLOATING_BUTTON_TOP
+        }
+
+        addOverlayView(floatingBtn, floatingParams)
+        updateFloatingButton()
     }
 
 
@@ -462,6 +525,49 @@ class OverlayService : Service(),
         }
     }
 
+    private fun minimizeOverlay() {
+        if (overlayMinimized || !::drawView.isInitialized) return
+
+        overlayMinimized = true
+        cancelSequencePresentation()
+        disableCapture()
+        drawView.resetGlyphs()
+        drawView.visibility = View.GONE
+        setMainControlsVisibility(View.GONE)
+        updateProgramButtons()
+
+        if (::floatingBtn.isInitialized) {
+            updateFloatingButton()
+            floatingBtn.visibility = View.VISIBLE
+        }
+    }
+
+    private fun restoreOverlay() {
+        if (!canUseOverlay() || creationFailed || !::drawView.isInitialized) return
+
+        cancelSequencePresentation()
+        disableCapture()
+        drawView.setGlyphLimit(glyphLimit)
+        drawView.setGlyphScales(horizontalScale, verticalScale)
+        drawView.visibility = View.VISIBLE
+        setMainControlsVisibility(View.VISIBLE)
+        overlayMinimized = false
+        updateStartButton(false)
+        updateModeButton()
+        updateProgramButtons()
+
+        if (::floatingBtn.isInitialized) {
+            floatingBtn.visibility = View.GONE
+        }
+    }
+
+    private fun setMainControlsVisibility(visibility: Int) {
+        closeBtn.visibility = visibility
+        startBtn.visibility = visibility
+        modeBtn.visibility = visibility
+        resetBtn.visibility = visibility
+    }
+
     // =====================================================
     // UI STATES
     // =====================================================
@@ -482,16 +588,53 @@ class OverlayService : Service(),
             }
         )
         modeBtn.setTextColor(Color.CYAN)
+        updateFloatingButton()
     }
+
+    private fun updateFloatingButton() {
+        if (!::floatingBtn.isInitialized) return
+
+        floatingBtn.setText(
+            when (glyphLimit) {
+                3 -> R.string.overlay_glyph_limit_3
+                4 -> R.string.overlay_glyph_limit_4
+                else -> R.string.overlay_glyph_limit
+            }
+        )
+    }
+
     private fun updateProgramButtons() {
 
-        val visible = AppMode.currentMode == AppMode.Mode.PROGRAM
+        val visible = !overlayMinimized && AppMode.currentMode == AppMode.Mode.PROGRAM
         val visibility = if (visible) TextView.VISIBLE else TextView.GONE
 
         zoomHXPlus.visibility = visibility
         zoomHXMinus.visibility = visibility
         zoomVPlus.visibility = visibility
         zoomVMinus.visibility = visibility
+    }
+
+    private fun restorePreferences() {
+        val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        glyphLimit = preferences.getInt(PREF_GLYPH_LIMIT, DEFAULT_GLYPH_LIMIT)
+            .coerceIn(3, 5)
+        horizontalScale = preferences.getFloat(PREF_HORIZONTAL_SCALE, DEFAULT_SCALE)
+            .coerceIn(0.5f, 1.8f)
+        verticalScale = preferences.getFloat(PREF_VERTICAL_SCALE, DEFAULT_SCALE)
+            .coerceIn(0.5f, 1.8f)
+    }
+
+    private fun saveGlyphLimit() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putInt(PREF_GLYPH_LIMIT, glyphLimit)
+        }
+    }
+
+    private fun saveGlyphScales() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putFloat(PREF_HORIZONTAL_SCALE, horizontalScale)
+            putFloat(PREF_VERTICAL_SCALE, verticalScale)
+        }
     }
 
     // =====================================================
@@ -508,6 +651,7 @@ class OverlayService : Service(),
         if (::startBtn.isInitialized) removeOverlayView(startBtn)
         if (::modeBtn.isInitialized) removeOverlayView(modeBtn)
         if (::resetBtn.isInitialized) removeOverlayView(resetBtn)
+        if (::floatingBtn.isInitialized) removeOverlayView(floatingBtn)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)
         if (::zoomHXMinus.isInitialized) removeOverlayView(zoomHXMinus)
         if (::zoomVPlus.isInitialized) removeOverlayView(zoomVPlus)
