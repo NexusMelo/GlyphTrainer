@@ -424,6 +424,10 @@ class DrawView : View {
 
     fun startCapture() {
 
+        if (touchCount >= maxTouches) {
+            resetGlyphs()
+        }
+
         // reset completo do estado do gesto
         gestureActive = false
         currentPath = Path()

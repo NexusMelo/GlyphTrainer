@@ -1,10 +1,13 @@
 package com
 
+import android.app.AppOpsManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.os.IBinder
+import android.provider.Settings
 import android.view.WindowManager
 import android.widget.ImageView
 import android.os.Handler
@@ -51,13 +54,22 @@ class OverlayService : Service(),
     private val gap = 20
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startCaptureRunnable = Runnable {
-        if (::drawView.isInitialized) {
+        if (capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
             drawView.startCapture()
+        } else {
+            disableCapture()
+        }
+    }
+    private val overlayPermissionListener = AppOpsManager.OnOpChangedListener { _, packageName ->
+        if (packageName == this.packageName && !canUseOverlay()) {
+            mainHandler.post { stopSelf() }
         }
     }
 
     private var glyphLimit = 5
     private var capturing = false
+    private var creationFailed = false
+    private var permissionListenerRegistered = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -68,15 +80,32 @@ class OverlayService : Service(),
     override fun onCreate() {
         super.onCreate()
 
+        if (!canUseOverlay()) {
+            stopSelf()
+            return
+        }
+
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
 
         createDrawLayer()
+        if (creationFailed) return
+
         createButtons()
+        if (creationFailed) return
 
         disableCapture()
         updateStartButton(false)
         updateModeButton()
         updateProgramButtons()
+        registerOverlayPermissionListener()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!canUseOverlay() || !isOverlayReady()) {
+            stopSelf()
+        }
+
+        return START_NOT_STICKY
     }
 
     // =====================================================
@@ -140,24 +169,27 @@ class OverlayService : Service(),
         closeBtn = makeButton(0x88FF4444.toInt()){ stopSelf() }
 
         startBtn = makeButton(0x66006600){
-            enableCapture()
-            updateStartButton(true)
+            if (enableCapture()) {
+                updateStartButton(true)
+            }
         }
 
         modeBtn = makeButton(0x550088FF){
+            disableCapture()
 
             glyphLimit = if(glyphLimit == 5) 4 else 5
 
             drawView.setGlyphLimit(glyphLimit)
 
+            updateStartButton(false)
             updateModeButton()
         }
 
         resetBtn = makeButton(0x88FFFF00.toInt()){
             disableCapture()
             drawView.resetGlyphs()
-            enableCapture()
-            updateStartButton(true)
+            val active = enableCapture()
+            updateStartButton(active)
         }
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             drawView.adjustHorizontal(1f)
@@ -258,9 +290,11 @@ class OverlayService : Service(),
     // CAPTURE CONTROL (CORRIGIDO)
     // =====================================================
 
-    private fun enableCapture(){
+    private fun enableCapture(): Boolean {
 
-        if(capturing) return
+        if (capturing) return true
+        if (!canUseOverlay() || !isPlayMode() || !isOverlayReady()) return false
+
         capturing = true
 
         drawParams.flags =
@@ -269,12 +303,17 @@ class OverlayService : Service(),
         updateOverlayView(drawView, drawParams)
 
         // pequeno delay para estabilizar input
+        mainHandler.removeCallbacks(startCaptureRunnable)
         mainHandler.postDelayed(startCaptureRunnable, 140)
+        return true
     }
 
     private fun disableCapture(){
 
         capturing = false
+        mainHandler.removeCallbacks(startCaptureRunnable)
+
+        if (!::drawView.isInitialized || !::drawParams.isInitialized) return
 
         drawParams.flags =
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -324,6 +363,7 @@ class OverlayService : Service(),
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(startCaptureRunnable)
+        unregisterOverlayPermissionListener()
 
         if (::drawView.isInitialized) removeOverlayView(drawView)
         if (::closeBtn.isInitialized) removeOverlayView(closeBtn)
@@ -342,21 +382,29 @@ class OverlayService : Service(),
         try {
             wm.addView(view, params)
         } catch (_: WindowManager.BadTokenException) {
+            creationFailed = true
             stopSelf()
         } catch (_: IllegalArgumentException) {
+            creationFailed = true
             stopSelf()
         } catch (_: SecurityException) {
+            creationFailed = true
             stopSelf()
         }
     }
 
     private fun updateOverlayView(view: View, params: WindowManager.LayoutParams) {
-        if (!view.isAttachedToWindow) return
+        if (!view.isAttachedToWindow) {
+            stopSelf()
+            return
+        }
 
         try {
             wm.updateViewLayout(view, params)
         } catch (_: IllegalArgumentException) {
-            // The view may have been detached while the service was stopping.
+            stopSelf()
+        } catch (_: SecurityException) {
+            stopSelf()
         }
     }
 
@@ -367,6 +415,50 @@ class OverlayService : Service(),
             wm.removeView(view)
         } catch (_: IllegalArgumentException) {
             // The view may already have been removed by WindowManager.
+        } catch (_: SecurityException) {
+            // Overlay permission may have been revoked during teardown.
         }
+    }
+
+    private fun isPlayMode() = AppMode.currentMode == AppMode.Mode.PLAY
+
+    private fun canUseOverlay() = Settings.canDrawOverlays(this)
+
+    private fun isOverlayReady(): Boolean {
+        return ::drawView.isInitialized && drawView.isAttachedToWindow &&
+                ::closeBtn.isInitialized && closeBtn.isAttachedToWindow &&
+                ::startBtn.isInitialized && startBtn.isAttachedToWindow &&
+                ::modeBtn.isInitialized && modeBtn.isAttachedToWindow &&
+                ::resetBtn.isInitialized && resetBtn.isAttachedToWindow &&
+                ::zoomHXPlus.isInitialized && zoomHXPlus.isAttachedToWindow &&
+                ::zoomHXMinus.isInitialized && zoomHXMinus.isAttachedToWindow &&
+                ::zoomVPlus.isInitialized && zoomVPlus.isAttachedToWindow &&
+                ::zoomVMinus.isInitialized && zoomVMinus.isAttachedToWindow
+    }
+
+    private fun registerOverlayPermissionListener() {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        try {
+            appOps.startWatchingMode(
+                AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
+                packageName,
+                overlayPermissionListener
+            )
+            permissionListenerRegistered = true
+        } catch (_: SecurityException) {
+            stopSelf()
+        }
+    }
+
+    private fun unregisterOverlayPermissionListener() {
+        if (!permissionListenerRegistered) return
+
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        try {
+            appOps.stopWatchingMode(overlayPermissionListener)
+        } catch (_: SecurityException) {
+            // Permission state may already be unavailable during teardown.
+        }
+        permissionListenerRegistered = false
     }
 }
