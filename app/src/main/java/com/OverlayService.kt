@@ -58,6 +58,7 @@ class OverlayService : Service(),
     private lateinit var modeParams: WindowManager.LayoutParams
     private lateinit var resetParams: WindowManager.LayoutParams
 
+    private val drawArea = RectF()
     private val buttonSize = 130
     private val gap = 20
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -249,6 +250,12 @@ class OverlayService : Service(),
         zoomVMinus = makeMenuButton(R.string.adjust_vertical_decrease) {
             drawView.adjustVertical(-1f)
         }
+
+        zoomVMinus.post {
+            if (!drawArea.isEmpty) {
+                positionOverlayControls(drawArea)
+            }
+        }
     }
 
 
@@ -287,7 +294,14 @@ class OverlayService : Service(),
     // =====================================================
 
     override fun onAreaUpdated(area: RectF) {
+        drawArea.set(area)
 
+        if (!::zoomVMinus.isInitialized || !zoomVMinus.isAttachedToWindow) return
+
+        positionOverlayControls(drawArea)
+    }
+
+    private fun positionOverlayControls(area: RectF) {
         val baseY = (area.top - buttonSize - gap).toInt()
         val screenWidth = drawView.width
 
