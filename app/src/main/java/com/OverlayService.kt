@@ -29,6 +29,9 @@ class OverlayService : Service(),
     private companion object {
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 3_000L
+        const val REPLAY_START_DELAY_MS = 1_000L
+        const val REPLAY_GLYPH_DURATION_MS = 800L
+        const val REPLAY_GLYPH_GAP_MS = 250L
     }
 
     private lateinit var wm: WindowManager
@@ -68,6 +71,32 @@ class OverlayService : Service(),
     private val showGlyphSequenceRunnable = Runnable {
         if (!capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
             drawView.showCompletedSequence()
+            startReplay()
+        }
+    }
+    private val replayStepRunnable = object : Runnable {
+        override fun run() {
+            if (capturing || !canUseOverlay() || !isPlayMode() || !isOverlayReady()) {
+                cancelReplay()
+                return
+            }
+
+            if (replayGlyphVisible) {
+                drawView.clearReplayGlyph()
+                replayGlyphVisible = false
+
+                if (replayIndex >= glyphLimit) return
+
+                mainHandler.postDelayed(this, REPLAY_GLYPH_GAP_MS)
+                return
+            }
+
+            if (replayIndex >= glyphLimit) return
+
+            drawView.showReplayGlyph(replayIndex)
+            replayIndex++
+            replayGlyphVisible = true
+            mainHandler.postDelayed(this, REPLAY_GLYPH_DURATION_MS)
         }
     }
     private val overlayPermissionListener = AppOpsManager.OnOpChangedListener { _, packageName ->
@@ -78,6 +107,8 @@ class OverlayService : Service(),
 
     private var glyphLimit = 5
     private var capturing = false
+    private var replayIndex = 0
+    private var replayGlyphVisible = false
     private var creationFailed = false
     private var permissionListenerRegistered = false
 
@@ -185,7 +216,7 @@ class OverlayService : Service(),
         }
 
         modeBtn = makeButton(0x550088FF){
-            cancelGlyphDisplay()
+            cancelSequencePresentation()
             disableCapture()
 
             glyphLimit = if(glyphLimit == 5) 4 else 5
@@ -197,7 +228,7 @@ class OverlayService : Service(),
         }
 
         resetBtn = makeButton(0x88FFFF00.toInt()){
-            cancelGlyphDisplay()
+            cancelSequencePresentation()
             disableCapture()
             drawView.resetGlyphs()
             val active = enableCapture()
@@ -307,7 +338,7 @@ class OverlayService : Service(),
         if (capturing) return true
         if (!canUseOverlay() || !isPlayMode() || !isOverlayReady()) return false
 
-        cancelGlyphDisplay()
+        cancelSequencePresentation()
         drawView.hideCompletedSequence()
         capturing = true
 
@@ -341,12 +372,28 @@ class OverlayService : Service(),
     override fun onCaptureFinished() {
         disableCapture()
         updateStartButton(false)
-        mainHandler.removeCallbacks(showGlyphSequenceRunnable)
+        cancelSequencePresentation()
         mainHandler.postDelayed(showGlyphSequenceRunnable, GLYPH_DISPLAY_DELAY_MS)
     }
 
-    private fun cancelGlyphDisplay() {
+    private fun startReplay() {
+        cancelReplay()
+        mainHandler.postDelayed(replayStepRunnable, REPLAY_START_DELAY_MS)
+    }
+
+    private fun cancelSequencePresentation() {
         mainHandler.removeCallbacks(showGlyphSequenceRunnable)
+        cancelReplay()
+    }
+
+    private fun cancelReplay() {
+        mainHandler.removeCallbacks(replayStepRunnable)
+        replayIndex = 0
+        replayGlyphVisible = false
+
+        if (::drawView.isInitialized) {
+            drawView.clearReplayGlyph()
+        }
     }
 
     // =====================================================
@@ -383,7 +430,7 @@ class OverlayService : Service(),
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(startCaptureRunnable)
-        cancelGlyphDisplay()
+        cancelSequencePresentation()
         unregisterOverlayPermissionListener()
 
         if (::drawView.isInitialized) removeOverlayView(drawView)

@@ -147,6 +147,7 @@ class DrawView : View {
     private var captureEnabled = false
     private var gestureActive = false
     private var completedSequenceVisible = false
+    private var replayGlyphIndex: Int? = null
 
     // 🔥 anti toque acidental
     private val MIN_GESTURE_DISTANCE = 40f
@@ -264,6 +265,14 @@ class DrawView : View {
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             canvas.drawRect(visualArea, borderPaint)
             drawNodes(canvas)
+
+        replayGlyphIndex
+            ?.let(saved::getOrNull)
+            ?.let { path ->
+                canvas.drawPath(path, paintGlowOuter)
+                canvas.drawPath(path, paintGlowMid)
+                canvas.drawPath(path, paintCore)
+            }
 
         val glyphSize = width / 6f
         val spacing = glyphSize * 1.2f
@@ -432,6 +441,7 @@ class DrawView : View {
 
         // reset completo do estado do gesto
         completedSequenceVisible = false
+        replayGlyphIndex = null
         gestureActive = false
         currentPath = Path()
 
@@ -470,12 +480,27 @@ class DrawView : View {
         invalidate()
     }
 
+    fun showReplayGlyph(index: Int) {
+        if (touchCount < maxTouches || saved.getOrNull(index) == null) return
+
+        replayGlyphIndex = index
+        invalidate()
+    }
+
+    fun clearReplayGlyph() {
+        if (replayGlyphIndex == null) return
+
+        replayGlyphIndex = null
+        invalidate()
+    }
+
     fun resetGlyphs(){
         for(i in saved.indices) saved[i]=null
         touchCount=0
         captureEnabled=false
         gestureActive=false
         completedSequenceVisible=false
+        replayGlyphIndex=null
         currentPath=Path()
         invalidate()
     }
