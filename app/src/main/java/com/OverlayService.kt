@@ -9,6 +9,10 @@ import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.style.MetricAffectingSpan
 import android.view.WindowManager
 import android.os.Handler
 import android.os.Looper
@@ -105,6 +109,18 @@ class OverlayService : Service(),
     private val overlayPermissionListener = AppOpsManager.OnOpChangedListener { _, packageName ->
         if (packageName == this.packageName && !canUseOverlay()) {
             mainHandler.post { stopSelf() }
+        }
+    }
+
+    private class BaselineShiftSpan(
+        private val shiftPx: Int
+    ) : MetricAffectingSpan() {
+        override fun updateDrawState(textPaint: TextPaint) {
+            textPaint.baselineShift += shiftPx
+        }
+
+        override fun updateMeasureState(textPaint: TextPaint) {
+            textPaint.baselineShift += shiftPx
         }
     }
 
@@ -211,14 +227,14 @@ class OverlayService : Service(),
     private fun createButtons(){
 
         closeBtn = makeButton(R.string.overlay_close, Color.RED){ stopSelf() }
-        closeBtn.translationY = -8f
+        shiftButtonSymbol(closeBtn, R.string.overlay_close, -8)
 
         startBtn = makeButton(R.string.overlay_start, Color.WHITE){
             if (enableCapture()) {
                 updateStartButton(true)
             }
         }
-        startBtn.translationY = -20f
+        shiftButtonSymbol(startBtn, R.string.overlay_start, -20)
 
         modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN, 30f){
             cancelSequencePresentation()
@@ -239,7 +255,7 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        resetBtn.translationY = -16f
+        shiftButtonSymbol(resetBtn, R.string.overlay_reset, -16)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             drawView.adjustHorizontal(1f)
         }
@@ -307,6 +323,21 @@ class OverlayService : Service(),
         }
 
         return v
+    }
+
+    private fun shiftButtonSymbol(
+        button: TextView,
+        @StringRes textRes: Int,
+        baselineShiftPx: Int
+    ) {
+        val symbol = SpannableString(getText(textRes))
+        symbol.setSpan(
+            BaselineShiftSpan(baselineShiftPx),
+            0,
+            symbol.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        button.text = symbol
     }
 
     // =====================================================
