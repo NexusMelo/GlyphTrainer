@@ -293,7 +293,8 @@ class DrawView : View {
 
         val glyphSize = width / 6f
         val spacing = glyphSize * 1.2f
-        val startX = 40f
+        val groupWidth = glyphSize + spacing * (maxTouches - 1)
+        val startX = if (maxTouches == MAX_SLOTS) 40f else (width - groupWidth) / 2f
 
         for (slot in 0 until maxTouches) {
 

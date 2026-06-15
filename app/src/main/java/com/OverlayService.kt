@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.RectF
+import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
 import android.view.WindowManager
@@ -217,7 +218,7 @@ class OverlayService : Service(),
             }
         }
 
-        modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN){
+        modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN, 30f){
             cancelSequencePresentation()
             disableCapture()
 
@@ -263,15 +264,20 @@ class OverlayService : Service(),
     private fun makeButton(
         @StringRes textRes: Int,
         textColor: Int,
+        textSize: Float = 34f,
         action:()->Unit
     ): TextView {
 
         val v = TextView(this)
         v.setText(textRes)
         v.setTextColor(textColor)
-        v.textSize = 34f
+        v.textSize = textSize
         v.gravity = Gravity.CENTER
-        v.setBackgroundColor(Color.TRANSPARENT)
+        v.setPadding(0, 0, 0, 6)
+        v.background = GradientDrawable().apply {
+            setColor(Color.TRANSPARENT)
+            setStroke(2, Color.argb(180, 255, 255, 255))
+        }
         v.setOnClickListener{ action() }
 
         val params = WindowManager.LayoutParams(
