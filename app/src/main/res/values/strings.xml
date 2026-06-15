@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">GlyphTrainer</string>
+    <string name="action_play">Jogar</string>
+    <string name="action_program">Programar</string>
+    <string name="pin_hint">PIN</string>
+    <string name="action_enter">Entrar</string>
+    <string name="error_invalid_pin">PIN incorreto</string>
+    <string name="adjust_horizontal_increase">H +</string>
+    <string name="adjust_horizontal_decrease">H -</string>
+    <string name="adjust_vertical_increase">V +</string>
+    <string name="adjust_vertical_decrease">V -</string>
+    <string name="program_mode_label">MODO PROGRAMAÇÃO</string>
+</resources>
