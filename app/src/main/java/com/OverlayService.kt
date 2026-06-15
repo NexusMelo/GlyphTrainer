@@ -52,6 +52,8 @@ class OverlayService : Service(),
         const val FLOATING_MODE_WIDTH = 176
         const val FLOATING_MODE_HEIGHT = 64
         const val FLOATING_MODE_GAP = 16
+        const val FLOATING_CLOSE_SIZE = 48
+        const val FLOATING_CLOSE_OVERLAP = FLOATING_CLOSE_SIZE / 2
         const val FLOATING_GROUP_HEIGHT =
             FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT
         const val CAPTURE_START_DELAY_MS = 140L
@@ -72,6 +74,7 @@ class OverlayService : Service(),
     private lateinit var resetBtn: TextView
     private lateinit var floatingBtn: TextView
     private lateinit var floatingModeBtn: TextView
+    private lateinit var floatingCloseBtn: TextView
     private lateinit var zoomHXPlus: TextView
     private lateinit var zoomHXMinus: TextView
     private lateinit var zoomVPlus: TextView
@@ -89,6 +92,7 @@ class OverlayService : Service(),
     private lateinit var resetParams: WindowManager.LayoutParams
     private lateinit var floatingParams: WindowManager.LayoutParams
     private lateinit var floatingModeParams: WindowManager.LayoutParams
+    private lateinit var floatingCloseParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
     private val buttonSize = 96
@@ -369,6 +373,38 @@ class OverlayService : Service(),
 
         addOverlayView(floatingBtn, floatingParams)
 
+        floatingCloseBtn = TextView(this).apply {
+            setText(R.string.overlay_close)
+            textSize = 24f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(220, 150, 20, 20))
+                setStroke(3, Color.RED)
+            }
+            elevation = 10f
+            visibility = View.GONE
+            setOnClickListener { stopSelf() }
+            setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
+        }
+
+        floatingCloseParams = WindowManager.LayoutParams(
+            FLOATING_CLOSE_SIZE,
+            FLOATING_CLOSE_SIZE,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = floatingGroupX
+            y = floatingGroupY - FLOATING_CLOSE_OVERLAP
+        }
+
+        addOverlayView(floatingCloseBtn, floatingCloseParams)
+
         floatingModeBtn = TextView(this).apply {
             textSize = 15f
             setTextColor(Color.WHITE)
@@ -459,17 +495,23 @@ class OverlayService : Service(),
         val topInset = getSystemBarSize("status_bar_height")
         val bottomInset = getSystemBarSize("navigation_bar_height")
         val maxX = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
+        val minY = topInset + FLOATING_CLOSE_OVERLAP
         val maxY = (screenHeight - bottomInset - FLOATING_GROUP_HEIGHT)
-            .coerceAtLeast(topInset)
+            .coerceAtLeast(minY)
 
         floatingGroupX = requestedX.coerceIn(0, maxX)
-        floatingGroupY = requestedY.coerceIn(topInset, maxY)
+        floatingGroupY = requestedY.coerceIn(minY, maxY)
 
         if (::floatingParams.isInitialized) {
             floatingParams.x =
                 floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
             floatingParams.y = floatingGroupY
             updateOverlayView(floatingBtn, floatingParams)
+        }
+        if (::floatingCloseParams.isInitialized) {
+            floatingCloseParams.x = floatingGroupX
+            floatingCloseParams.y = floatingGroupY - FLOATING_CLOSE_OVERLAP
+            updateOverlayView(floatingCloseBtn, floatingCloseParams)
         }
         if (::floatingModeParams.isInitialized) {
             floatingModeParams.x = floatingGroupX
@@ -689,6 +731,9 @@ class OverlayService : Service(),
             updateFloatingModeButton()
             floatingModeBtn.visibility = View.VISIBLE
         }
+        if (::floatingCloseBtn.isInitialized) {
+            floatingCloseBtn.visibility = View.VISIBLE
+        }
     }
 
     private fun restoreOverlay(startCaptureAutomatically: Boolean = false) {
@@ -710,6 +755,9 @@ class OverlayService : Service(),
         }
         if (::floatingModeBtn.isInitialized) {
             floatingModeBtn.visibility = View.GONE
+        }
+        if (::floatingCloseBtn.isInitialized) {
+            floatingCloseBtn.visibility = View.GONE
         }
 
         if (startCaptureAutomatically) {
@@ -860,6 +908,7 @@ class OverlayService : Service(),
         if (::resetBtn.isInitialized) removeOverlayView(resetBtn)
         if (::floatingBtn.isInitialized) removeOverlayView(floatingBtn)
         if (::floatingModeBtn.isInitialized) removeOverlayView(floatingModeBtn)
+        if (::floatingCloseBtn.isInitialized) removeOverlayView(floatingCloseBtn)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)
         if (::zoomHXMinus.isInitialized) removeOverlayView(zoomHXMinus)
         if (::zoomVPlus.isInitialized) removeOverlayView(zoomVPlus)
