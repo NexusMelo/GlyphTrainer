@@ -9,5 +9,6 @@
     <string name="adjust_horizontal_decrease">H -</string>
     <string name="adjust_vertical_increase">V +</string>
     <string name="adjust_vertical_decrease">V -</string>
+    <string name="go_label">GO</string>
     <string name="program_mode_label">MODO PROGRAMAÇÃO</string>
 </resources>

@@ -147,6 +147,7 @@ class DrawView : View {
     private var captureEnabled = false
     private var gestureActive = false
     private var completedSequenceVisible = false
+    private var goVisible = false
     private var replayGlyphIndex: Int? = null
 
     // 🔥 anti toque acidental
@@ -219,6 +220,18 @@ class DrawView : View {
         textSize = 60f
         isAntiAlias = true
     }
+    private val goPaint = Paint().apply {
+        color = Color.YELLOW
+        textSize = 110f
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
+    }
+    private val programPaint = Paint().apply {
+        color = Color.WHITE
+        textSize = 60f
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
+    }
     private val slotBorderPaint = Paint().apply {
         color = Color.BLUE
         style = Paint.Style.STROKE
@@ -264,7 +277,6 @@ class DrawView : View {
 
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             canvas.drawRect(visualArea, borderPaint)
-            drawNodes(canvas)
 
         replayGlyphIndex
             ?.let(saved::getOrNull)
@@ -316,15 +328,15 @@ class DrawView : View {
             drawArea.bottom+90f,
             textPaint
         )
+        if (goVisible) {
+            canvas.drawText(
+                context.getString(R.string.go_label),
+                drawArea.centerX(),
+                drawArea.centerY(),
+                goPaint
+            )
+        }
         if (isProgramMode) {
-
-            val programPaint = Paint().apply {
-                color = Color.WHITE
-                textSize = 60f
-                isAntiAlias = true
-                textAlign = Paint.Align.CENTER
-            }
-
             canvas.drawText(
                 context.getString(R.string.program_mode_label),
                 width / 2f,
@@ -358,7 +370,7 @@ class DrawView : View {
                 gestureActive = true
                 gestureDistance = 0f
 
-                currentPath = Path()
+                currentPath.reset()
                 currentPath.moveTo(event.x,event.y)
 
                 lastX = event.x
@@ -410,7 +422,7 @@ class DrawView : View {
         // ignora gestos pequenos
         if (gestureDistance < MIN_GESTURE_DISTANCE) {
             gestureDistance = 0f
-            currentPath = Path()
+            currentPath.reset()
             invalidate()
             return
         }
@@ -422,7 +434,7 @@ class DrawView : View {
 
         // limpeza SEMPRE executada
         gestureDistance = 0f
-        currentPath = Path()
+        currentPath.reset()
 
         if (touchCount >= maxTouches) {
             captureEnabled = false
@@ -440,9 +452,10 @@ class DrawView : View {
 
         // reset completo do estado do gesto
         completedSequenceVisible = false
+        goVisible = false
         replayGlyphIndex = null
         gestureActive = false
-        currentPath = Path()
+        currentPath.reset()
 
         captureEnabled = true
         invalidate()
@@ -455,7 +468,7 @@ class DrawView : View {
         gestureActive = false
         gestureDistance = 0f
 
-        currentPath = Path()
+        currentPath.reset()
 
         invalidate()
     }
@@ -469,19 +482,22 @@ class DrawView : View {
         if (touchCount < maxTouches) return
 
         completedSequenceVisible = true
+        goVisible = true
         invalidate()
     }
 
     fun hideCompletedSequence() {
-        if (!completedSequenceVisible) return
+        if (!completedSequenceVisible && !goVisible) return
 
         completedSequenceVisible = false
+        goVisible = false
         invalidate()
     }
 
     fun showReplayGlyph(index: Int) {
         if (touchCount < maxTouches || saved.getOrNull(index) == null) return
 
+        goVisible = false
         replayGlyphIndex = index
         invalidate()
     }
@@ -493,14 +509,22 @@ class DrawView : View {
         invalidate()
     }
 
+    fun clearGoMessage() {
+        if (!goVisible) return
+
+        goVisible = false
+        invalidate()
+    }
+
     fun resetGlyphs(){
         for(i in saved.indices) saved[i]=null
         touchCount=0
         captureEnabled=false
         gestureActive=false
         completedSequenceVisible=false
+        goVisible=false
         replayGlyphIndex=null
-        currentPath=Path()
+        currentPath.reset()
         invalidate()
     }
     fun adjustHorizontal(direction: Float) {

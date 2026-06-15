@@ -272,6 +272,7 @@ class OverlayService : Service(),
                     or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         )
+        params.gravity = Gravity.TOP or Gravity.START
 
         addOverlayView(v, params)
 
@@ -302,20 +303,19 @@ class OverlayService : Service(),
     }
 
     private fun positionOverlayControls(area: RectF) {
-        val baseY = (area.top - buttonSize - gap).toInt()
         val screenWidth = drawView.width
+        val controlsWidth = buttonSize * 4 + gap * 3
+        val controlsStartX = (screenWidth - controlsWidth) / 2
+        val controlsY = (area.bottom + 110f).toInt()
 
-        closeParams.x = (area.right + gap).toInt()
-        closeParams.y = baseY
-
-        startParams.x = closeParams.x
-        startParams.y = baseY - buttonSize - 20
-
-        modeParams.x = closeParams.x
-        modeParams.y = startParams.y - buttonSize - 20
-
-        resetParams.x = (screenWidth/2)-(buttonSize/2)
-        resetParams.y = baseY + buttonSize + 20
+        modeParams.x = controlsStartX
+        modeParams.y = controlsY
+        startParams.x = controlsStartX + buttonSize + gap
+        startParams.y = controlsY
+        resetParams.x = controlsStartX + (buttonSize + gap) * 2
+        resetParams.y = controlsY
+        closeParams.x = controlsStartX + (buttonSize + gap) * 3
+        closeParams.y = controlsY
 
         updateOverlayView(closeBtn, closeParams)
         updateOverlayView(startBtn, startParams)
@@ -391,7 +391,7 @@ class OverlayService : Service(),
     }
 
     private fun startReplay() {
-        cancelReplay()
+        cancelReplay(clearGoMessage = false)
         mainHandler.postDelayed(replayStepRunnable, REPLAY_START_DELAY_MS)
     }
 
@@ -400,13 +400,16 @@ class OverlayService : Service(),
         cancelReplay()
     }
 
-    private fun cancelReplay() {
+    private fun cancelReplay(clearGoMessage: Boolean = true) {
         mainHandler.removeCallbacks(replayStepRunnable)
         replayIndex = 0
         replayGlyphVisible = false
 
         if (::drawView.isInitialized) {
             drawView.clearReplayGlyph()
+            if (clearGoMessage) {
+                drawView.clearGoMessage()
+            }
         }
     }
 

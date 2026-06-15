@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
@@ -33,6 +34,7 @@ class MenuActivity : AppCompatActivity() {
         val programarBtn = Button(this).apply {
             setText(R.string.action_program)
             textSize = 22f
+            visibility = View.GONE
             setOnClickListener {
                 startActivity(Intent(this@MenuActivity, PasswordActivity::class.java))
             }
