@@ -273,7 +273,8 @@ class OverlayService : Service(),
         v.setTextColor(textColor)
         v.textSize = textSize
         v.gravity = Gravity.CENTER
-        v.setPadding(0, 0, 0, 6)
+        v.includeFontPadding = false
+        v.setPadding(0, 0, 0, 0)
         v.background = GradientDrawable().apply {
             setColor(Color.TRANSPARENT)
             setStroke(2, Color.argb(180, 255, 255, 255))
