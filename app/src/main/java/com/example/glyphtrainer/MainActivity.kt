@@ -293,7 +293,6 @@ class DrawView : View {
                 slotBorderPaint
             )
 
-            if (!completedSequenceVisible) continue
             val path = saved[slot] ?: continue
 
             canvas.withTranslation(x, y) {
