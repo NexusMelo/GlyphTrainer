@@ -343,7 +343,7 @@ class OverlayService : Service(),
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = FLOATING_BUTTON_MARGIN
+            x = FLOATING_BUTTON_MARGIN + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
             y = FLOATING_BUTTON_TOP
         }
 
