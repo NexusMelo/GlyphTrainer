@@ -146,6 +146,7 @@ class DrawView : View {
     private var maxTouches = 5
     private var captureEnabled = false
     private var gestureActive = false
+    private var completedSequenceVisible = false
 
     // 🔥 anti toque acidental
     private val MIN_GESTURE_DISTANCE = 40f
@@ -283,6 +284,7 @@ class DrawView : View {
                 slotBorderPaint
             )
 
+            if (!completedSequenceVisible) continue
             val path = saved[slot] ?: continue
 
             canvas.withTranslation(x, y) {
@@ -429,6 +431,7 @@ class DrawView : View {
         }
 
         // reset completo do estado do gesto
+        completedSequenceVisible = false
         gestureActive = false
         currentPath = Path()
 
@@ -453,11 +456,26 @@ class DrawView : View {
         resetGlyphs()
     }
 
+    fun showCompletedSequence() {
+        if (touchCount < maxTouches) return
+
+        completedSequenceVisible = true
+        invalidate()
+    }
+
+    fun hideCompletedSequence() {
+        if (!completedSequenceVisible) return
+
+        completedSequenceVisible = false
+        invalidate()
+    }
+
     fun resetGlyphs(){
         for(i in saved.indices) saved[i]=null
         touchCount=0
         captureEnabled=false
         gestureActive=false
+        completedSequenceVisible=false
         currentPath=Path()
         invalidate()
     }

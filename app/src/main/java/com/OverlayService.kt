@@ -26,6 +26,11 @@ class OverlayService : Service(),
 
     DrawView.OverlayListener {
 
+    private companion object {
+        const val CAPTURE_START_DELAY_MS = 140L
+        const val GLYPH_DISPLAY_DELAY_MS = 3_000L
+    }
+
     private lateinit var wm: WindowManager
     private lateinit var drawView: DrawView
 
@@ -58,6 +63,11 @@ class OverlayService : Service(),
             drawView.startCapture()
         } else {
             disableCapture()
+        }
+    }
+    private val showGlyphSequenceRunnable = Runnable {
+        if (!capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
+            drawView.showCompletedSequence()
         }
     }
     private val overlayPermissionListener = AppOpsManager.OnOpChangedListener { _, packageName ->
@@ -175,6 +185,7 @@ class OverlayService : Service(),
         }
 
         modeBtn = makeButton(0x550088FF){
+            cancelGlyphDisplay()
             disableCapture()
 
             glyphLimit = if(glyphLimit == 5) 4 else 5
@@ -186,6 +197,7 @@ class OverlayService : Service(),
         }
 
         resetBtn = makeButton(0x88FFFF00.toInt()){
+            cancelGlyphDisplay()
             disableCapture()
             drawView.resetGlyphs()
             val active = enableCapture()
@@ -295,6 +307,8 @@ class OverlayService : Service(),
         if (capturing) return true
         if (!canUseOverlay() || !isPlayMode() || !isOverlayReady()) return false
 
+        cancelGlyphDisplay()
+        drawView.hideCompletedSequence()
         capturing = true
 
         drawParams.flags =
@@ -304,7 +318,7 @@ class OverlayService : Service(),
 
         // pequeno delay para estabilizar input
         mainHandler.removeCallbacks(startCaptureRunnable)
-        mainHandler.postDelayed(startCaptureRunnable, 140)
+        mainHandler.postDelayed(startCaptureRunnable, CAPTURE_START_DELAY_MS)
         return true
     }
 
@@ -327,6 +341,12 @@ class OverlayService : Service(),
     override fun onCaptureFinished() {
         disableCapture()
         updateStartButton(false)
+        mainHandler.removeCallbacks(showGlyphSequenceRunnable)
+        mainHandler.postDelayed(showGlyphSequenceRunnable, GLYPH_DISPLAY_DELAY_MS)
+    }
+
+    private fun cancelGlyphDisplay() {
+        mainHandler.removeCallbacks(showGlyphSequenceRunnable)
     }
 
     // =====================================================
@@ -363,6 +383,7 @@ class OverlayService : Service(),
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(startCaptureRunnable)
+        cancelGlyphDisplay()
         unregisterOverlayPermissionListener()
 
         if (::drawView.isInitialized) removeOverlayView(drawView)
