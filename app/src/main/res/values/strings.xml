@@ -10,5 +10,9 @@
     <string name="adjust_vertical_increase">V +</string>
     <string name="adjust_vertical_decrease">V -</string>
     <string name="go_label">GO</string>
+    <string name="overlay_glyph_limit">4/5</string>
+    <string name="overlay_start">▶</string>
+    <string name="overlay_reset">↻</string>
+    <string name="overlay_close">×</string>
     <string name="program_mode_label">MODO PROGRAMAÇÃO</string>
 </resources>

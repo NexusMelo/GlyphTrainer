@@ -9,7 +9,6 @@ import android.graphics.RectF
 import android.os.IBinder
 import android.provider.Settings
 import android.view.WindowManager
-import android.widget.ImageView
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -32,16 +31,17 @@ class OverlayService : Service(),
         const val REPLAY_START_DELAY_MS = 1_000L
         const val REPLAY_GLYPH_DURATION_MS = 800L
         const val REPLAY_GLYPH_GAP_MS = 250L
+        const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
     }
 
     private lateinit var wm: WindowManager
     private lateinit var drawView: DrawView
 
 
-    private lateinit var closeBtn: ImageView
-    private lateinit var startBtn: ImageView
-    private lateinit var modeBtn: ImageView
-    private lateinit var resetBtn: ImageView
+    private lateinit var closeBtn: TextView
+    private lateinit var startBtn: TextView
+    private lateinit var modeBtn: TextView
+    private lateinit var resetBtn: TextView
     private lateinit var zoomHXPlus: TextView
     private lateinit var zoomHXMinus: TextView
     private lateinit var zoomVPlus: TextView
@@ -59,8 +59,9 @@ class OverlayService : Service(),
     private lateinit var resetParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
-    private val buttonSize = 130
-    private val gap = 20
+    private val buttonSize = 96
+    private val gap = 24
+    private var fixedControlsY: Int? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startCaptureRunnable = Runnable {
         if (capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
@@ -208,15 +209,15 @@ class OverlayService : Service(),
 
     private fun createButtons(){
 
-        closeBtn = makeButton(0x88FF4444.toInt()){ stopSelf() }
+        closeBtn = makeButton(R.string.overlay_close, Color.RED){ stopSelf() }
 
-        startBtn = makeButton(0x66006600){
+        startBtn = makeButton(R.string.overlay_start, Color.WHITE){
             if (enableCapture()) {
                 updateStartButton(true)
             }
         }
 
-        modeBtn = makeButton(0x550088FF){
+        modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN){
             cancelSequencePresentation()
             disableCapture()
 
@@ -228,7 +229,7 @@ class OverlayService : Service(),
             updateModeButton()
         }
 
-        resetBtn = makeButton(0x88FFFF00.toInt()){
+        resetBtn = makeButton(R.string.overlay_reset, Color.YELLOW){
             cancelSequencePresentation()
             disableCapture()
             drawView.resetGlyphs()
@@ -259,10 +260,18 @@ class OverlayService : Service(),
     }
 
 
-    private fun makeButton(color:Int, action:()->Unit): ImageView {
+    private fun makeButton(
+        @StringRes textRes: Int,
+        textColor: Int,
+        action:()->Unit
+    ): TextView {
 
-        val v = ImageView(this)
-        v.setBackgroundColor(color)
+        val v = TextView(this)
+        v.setText(textRes)
+        v.setTextColor(textColor)
+        v.textSize = 26f
+        v.gravity = Gravity.CENTER
+        v.setBackgroundColor(Color.TRANSPARENT)
         v.setOnClickListener{ action() }
 
         val params = WindowManager.LayoutParams(
@@ -306,7 +315,9 @@ class OverlayService : Service(),
         val screenWidth = drawView.width
         val controlsWidth = buttonSize * 4 + gap * 3
         val controlsStartX = (screenWidth - controlsWidth) / 2
-        val controlsY = (area.bottom + 110f).toInt()
+        val controlsY = fixedControlsY ?: (area.bottom + 110f).toInt().also {
+            fixedControlsY = it
+        }
 
         modeParams.x = controlsStartX
         modeParams.y = controlsY
@@ -387,7 +398,8 @@ class OverlayService : Service(),
         disableCapture()
         updateStartButton(false)
         cancelSequencePresentation()
-        mainHandler.postDelayed(showGlyphSequenceRunnable, GLYPH_DISPLAY_DELAY_MS)
+        drawView.showGoMessage()
+        mainHandler.postDelayed(showGlyphSequenceRunnable, REPLAY_PREPARE_DELAY_MS)
     }
 
     private fun startReplay() {
@@ -419,16 +431,13 @@ class OverlayService : Service(),
 
     private fun updateStartButton(active:Boolean){
         if(active)
-            startBtn.setBackgroundColor(0xCC00FF00.toInt())
+            startBtn.setTextColor(Color.GREEN)
         else
-            startBtn.setBackgroundColor(0x66006600)
+            startBtn.setTextColor(Color.WHITE)
     }
 
     private fun updateModeButton(){
-        if(glyphLimit==5)
-            modeBtn.setBackgroundColor(0xFF0066FF.toInt())
-        else
-            modeBtn.setBackgroundColor(0xFF00BBFF.toInt())
+        modeBtn.setTextColor(if (glyphLimit == 5) Color.CYAN else Color.BLUE)
     }
     private fun updateProgramButtons() {
 

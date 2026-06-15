@@ -156,15 +156,20 @@ class DrawView : View {
 
     private val MAX_SLOTS = 5
     private val drawArea = RectF()
+    private var stableLayoutHeight = 0
 
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){
         val margin = 120f
+        if (stableLayoutHeight == 0) {
+            stableLayoutHeight = h
+        }
+        val layoutHeight = minOf(h, stableLayoutHeight)
 
         drawArea.set(
             margin,
-            h*0.30f,
+            layoutHeight*0.30f,
             w-margin,
-            h*0.78f
+            layoutHeight*0.78f
         )
         val expand = 60f  // tamanho extra do quadrado verde
 
@@ -222,7 +227,7 @@ class DrawView : View {
     }
     private val goPaint = Paint().apply {
         color = Color.YELLOW
-        textSize = 110f
+        textSize = 180f
         isAntiAlias = true
         textAlign = Paint.Align.CENTER
     }
@@ -482,6 +487,12 @@ class DrawView : View {
         if (touchCount < maxTouches) return
 
         completedSequenceVisible = true
+        invalidate()
+    }
+
+    fun showGoMessage() {
+        if (touchCount < maxTouches) return
+
         goVisible = true
         invalidate()
     }
