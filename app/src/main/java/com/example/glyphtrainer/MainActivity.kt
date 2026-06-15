@@ -227,7 +227,7 @@ class DrawView : View {
     }
     private val goPaint = Paint().apply {
         color = Color.YELLOW
-        textSize = 180f
+        textSize = 360f
         isAntiAlias = true
         textAlign = Paint.Align.CENTER
     }

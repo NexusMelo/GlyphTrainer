@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.RectF
-import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
 import android.text.SpannableString
@@ -294,10 +293,7 @@ class OverlayService : Service(),
         v.gravity = Gravity.CENTER
         v.includeFontPadding = false
         v.setPadding(0, 0, 0, 0)
-        v.background = GradientDrawable().apply {
-            setColor(Color.TRANSPARENT)
-            setStroke(2, Color.argb(180, 255, 255, 255))
-        }
+        v.setBackgroundColor(Color.TRANSPARENT)
         v.setOnClickListener{ action() }
 
         val params = WindowManager.LayoutParams(
