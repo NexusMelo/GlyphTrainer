@@ -142,7 +142,7 @@ class OverlayService : Service(),
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (!canUseOverlay() || !isOverlayReady()) {
+        if (!canUseOverlay() || creationFailed) {
             stopSelf()
         }
 
@@ -462,10 +462,7 @@ class OverlayService : Service(),
     }
 
     private fun updateOverlayView(view: View, params: WindowManager.LayoutParams) {
-        if (!view.isAttachedToWindow) {
-            stopSelf()
-            return
-        }
+        if (!view.isAttachedToWindow) return
 
         try {
             wm.updateViewLayout(view, params)
