@@ -1,5 +1,6 @@
 package com
 
+import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.Service
 import android.content.Context
@@ -13,6 +14,8 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.style.MetricAffectingSpan
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.os.Handler
 import android.os.Looper
@@ -25,6 +28,7 @@ import androidx.core.content.edit
 import com.example.glyphtrainer.AppMode
 import com.example.glyphtrainer.DrawView
 import com.example.glyphtrainer.R
+import kotlin.math.abs
 
 class OverlayService : Service(),
 
@@ -37,6 +41,8 @@ class OverlayService : Service(),
         const val PREF_HORIZONTAL_SCALE = "horizontal_scale"
         const val PREF_VERTICAL_SCALE = "vertical_scale"
         const val PREF_AUTO_CAPTURE = "auto_capture"
+        const val PREF_FLOATING_GROUP_X = "floating_group_x"
+        const val PREF_FLOATING_GROUP_Y = "floating_group_y"
         const val DEFAULT_GLYPH_LIMIT = 5
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
@@ -46,6 +52,8 @@ class OverlayService : Service(),
         const val FLOATING_MODE_WIDTH = 176
         const val FLOATING_MODE_HEIGHT = 64
         const val FLOATING_MODE_GAP = 16
+        const val FLOATING_GROUP_HEIGHT =
+            FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 3_000L
         const val REPLAY_START_DELAY_MS = 1_000L
@@ -85,7 +93,17 @@ class OverlayService : Service(),
     private val drawArea = RectF()
     private val buttonSize = 96
     private val gap = 24
+    private val floatingTouchSlop by lazy {
+        ViewConfiguration.get(this).scaledTouchSlop
+    }
     private var fixedControlsY: Int? = null
+    private var floatingGroupX = FLOATING_BUTTON_MARGIN
+    private var floatingGroupY = FLOATING_BUTTON_TOP
+    private var floatingDragStartRawX = 0f
+    private var floatingDragStartRawY = 0f
+    private var floatingDragStartGroupX = 0
+    private var floatingDragStartGroupY = 0
+    private var floatingDragging = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startCaptureRunnable = Runnable {
         if (capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
@@ -318,6 +336,7 @@ class OverlayService : Service(),
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun createFloatingControls() {
         floatingBtn = TextView(this).apply {
             textSize = 42f
@@ -332,6 +351,7 @@ class OverlayService : Service(),
             elevation = 8f
             visibility = View.GONE
             setOnClickListener { restoreOverlay(autoCaptureEnabled) }
+            setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
 
         floatingParams = WindowManager.LayoutParams(
@@ -343,8 +363,8 @@ class OverlayService : Service(),
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = FLOATING_BUTTON_MARGIN + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
-            y = FLOATING_BUTTON_TOP
+            x = floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
+            y = floatingGroupY
         }
 
         addOverlayView(floatingBtn, floatingParams)
@@ -360,6 +380,7 @@ class OverlayService : Service(),
                 saveAutoCaptureMode()
                 updateFloatingModeButton()
             }
+            setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
 
         floatingModeParams = WindowManager.LayoutParams(
@@ -371,13 +392,97 @@ class OverlayService : Service(),
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = FLOATING_BUTTON_MARGIN
-            y = FLOATING_BUTTON_TOP + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP
+            x = floatingGroupX
+            y = floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP
         }
 
         addOverlayView(floatingModeBtn, floatingModeParams)
+        applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
         updateFloatingButton()
         updateFloatingModeButton()
+    }
+
+    private fun handleFloatingDrag(view: View, event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                floatingDragStartRawX = event.rawX
+                floatingDragStartRawY = event.rawY
+                floatingDragStartGroupX = floatingGroupX
+                floatingDragStartGroupY = floatingGroupY
+                floatingDragging = false
+                return true
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val deltaX = event.rawX - floatingDragStartRawX
+                val deltaY = event.rawY - floatingDragStartRawY
+
+                if (!floatingDragging &&
+                    (abs(deltaX) > floatingTouchSlop || abs(deltaY) > floatingTouchSlop)
+                ) {
+                    floatingDragging = true
+                }
+
+                if (floatingDragging) {
+                    applyFloatingGroupPosition(
+                        floatingDragStartGroupX - deltaX.toInt(),
+                        floatingDragStartGroupY + deltaY.toInt()
+                    )
+                }
+                return true
+            }
+
+            MotionEvent.ACTION_UP -> {
+                if (floatingDragging) {
+                    saveFloatingGroupPosition()
+                } else {
+                    view.performClick()
+                }
+                floatingDragging = false
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                floatingDragging = false
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private fun applyFloatingGroupPosition(requestedX: Int, requestedY: Int) {
+        val screenWidth = drawView.width.takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+        val screenHeight = drawView.height.takeIf { it > 0 }
+            ?: resources.displayMetrics.heightPixels
+        val topInset = getSystemBarSize("status_bar_height")
+        val bottomInset = getSystemBarSize("navigation_bar_height")
+        val maxX = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
+        val maxY = (screenHeight - bottomInset - FLOATING_GROUP_HEIGHT)
+            .coerceAtLeast(topInset)
+
+        floatingGroupX = requestedX.coerceIn(0, maxX)
+        floatingGroupY = requestedY.coerceIn(topInset, maxY)
+
+        if (::floatingParams.isInitialized) {
+            floatingParams.x =
+                floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
+            floatingParams.y = floatingGroupY
+            updateOverlayView(floatingBtn, floatingParams)
+        }
+        if (::floatingModeParams.isInitialized) {
+            floatingModeParams.x = floatingGroupX
+            floatingModeParams.y =
+                floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP
+            updateOverlayView(floatingModeBtn, floatingModeParams)
+        }
+    }
+
+    @SuppressLint("DiscouragedApi")
+    private fun getSystemBarSize(resourceName: String): Int {
+        val resourceId = resources.getIdentifier(resourceName, "dimen", "android")
+        return if (resourceId != 0) resources.getDimensionPixelSize(resourceId) else 0
     }
 
 
@@ -576,6 +681,7 @@ class OverlayService : Service(),
         updateProgramButtons()
 
         if (::floatingBtn.isInitialized) {
+            applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
             updateFloatingButton()
             floatingBtn.visibility = View.VISIBLE
         }
@@ -702,6 +808,14 @@ class OverlayService : Service(),
             PREF_AUTO_CAPTURE,
             DEFAULT_AUTO_CAPTURE
         )
+        floatingGroupX = preferences.getInt(
+            PREF_FLOATING_GROUP_X,
+            FLOATING_BUTTON_MARGIN
+        )
+        floatingGroupY = preferences.getInt(
+            PREF_FLOATING_GROUP_Y,
+            FLOATING_BUTTON_TOP
+        )
     }
 
     private fun saveGlyphLimit() {
@@ -720,6 +834,13 @@ class OverlayService : Service(),
     private fun saveAutoCaptureMode() {
         getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
             putBoolean(PREF_AUTO_CAPTURE, autoCaptureEnabled)
+        }
+    }
+
+    private fun saveFloatingGroupPosition() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putInt(PREF_FLOATING_GROUP_X, floatingGroupX)
+            putInt(PREF_FLOATING_GROUP_Y, floatingGroupY)
         }
     }
 
