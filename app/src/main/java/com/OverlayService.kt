@@ -36,11 +36,16 @@ class OverlayService : Service(),
         const val PREF_GLYPH_LIMIT = "glyph_limit"
         const val PREF_HORIZONTAL_SCALE = "horizontal_scale"
         const val PREF_VERTICAL_SCALE = "vertical_scale"
+        const val PREF_AUTO_CAPTURE = "auto_capture"
         const val DEFAULT_GLYPH_LIMIT = 5
         const val DEFAULT_SCALE = 1f
-        const val FLOATING_BUTTON_SIZE = 80
+        const val DEFAULT_AUTO_CAPTURE = false
+        const val FLOATING_BUTTON_SIZE = 132
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
+        const val FLOATING_MODE_WIDTH = 176
+        const val FLOATING_MODE_HEIGHT = 64
+        const val FLOATING_MODE_GAP = 16
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 3_000L
         const val REPLAY_START_DELAY_MS = 1_000L
@@ -58,6 +63,7 @@ class OverlayService : Service(),
     private lateinit var modeBtn: TextView
     private lateinit var resetBtn: TextView
     private lateinit var floatingBtn: TextView
+    private lateinit var floatingModeBtn: TextView
     private lateinit var zoomHXPlus: TextView
     private lateinit var zoomHXMinus: TextView
     private lateinit var zoomVPlus: TextView
@@ -74,6 +80,7 @@ class OverlayService : Service(),
     private lateinit var modeParams: WindowManager.LayoutParams
     private lateinit var resetParams: WindowManager.LayoutParams
     private lateinit var floatingParams: WindowManager.LayoutParams
+    private lateinit var floatingModeParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
     private val buttonSize = 96
@@ -142,6 +149,7 @@ class OverlayService : Service(),
     private var glyphLimit = DEFAULT_GLYPH_LIMIT
     private var horizontalScale = DEFAULT_SCALE
     private var verticalScale = DEFAULT_SCALE
+    private var autoCaptureEnabled = DEFAULT_AUTO_CAPTURE
     private var capturing = false
     private var replayIndex = 0
     private var replayGlyphVisible = false
@@ -172,7 +180,7 @@ class OverlayService : Service(),
         createButtons()
         if (creationFailed) return
 
-        createFloatingButton()
+        createFloatingControls()
         if (creationFailed) return
 
         disableCapture()
@@ -310,18 +318,20 @@ class OverlayService : Service(),
         }
     }
 
-    private fun createFloatingButton() {
+    private fun createFloatingControls() {
         floatingBtn = TextView(this).apply {
-            textSize = 24f
-            setTextColor(Color.CYAN)
+            textSize = 42f
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             includeFontPadding = false
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.argb(120, 0, 0, 0))
+                setColor(Color.argb(210, 0, 75, 95))
+                setStroke(4, Color.CYAN)
             }
+            elevation = 8f
             visibility = View.GONE
-            setOnClickListener { restoreOverlay() }
+            setOnClickListener { restoreOverlay(autoCaptureEnabled) }
         }
 
         floatingParams = WindowManager.LayoutParams(
@@ -338,7 +348,36 @@ class OverlayService : Service(),
         }
 
         addOverlayView(floatingBtn, floatingParams)
+
+        floatingModeBtn = TextView(this).apply {
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            visibility = View.GONE
+            setOnClickListener {
+                autoCaptureEnabled = !autoCaptureEnabled
+                saveAutoCaptureMode()
+                updateFloatingModeButton()
+            }
+        }
+
+        floatingModeParams = WindowManager.LayoutParams(
+            FLOATING_MODE_WIDTH,
+            FLOATING_MODE_HEIGHT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = FLOATING_BUTTON_MARGIN
+            y = FLOATING_BUTTON_TOP + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP
+        }
+
+        addOverlayView(floatingModeBtn, floatingModeParams)
         updateFloatingButton()
+        updateFloatingModeButton()
     }
 
 
@@ -540,9 +579,13 @@ class OverlayService : Service(),
             updateFloatingButton()
             floatingBtn.visibility = View.VISIBLE
         }
+        if (::floatingModeBtn.isInitialized) {
+            updateFloatingModeButton()
+            floatingModeBtn.visibility = View.VISIBLE
+        }
     }
 
-    private fun restoreOverlay() {
+    private fun restoreOverlay(startCaptureAutomatically: Boolean = false) {
         if (!canUseOverlay() || creationFailed || !::drawView.isInitialized) return
 
         cancelSequencePresentation()
@@ -558,6 +601,13 @@ class OverlayService : Service(),
 
         if (::floatingBtn.isInitialized) {
             floatingBtn.visibility = View.GONE
+        }
+        if (::floatingModeBtn.isInitialized) {
+            floatingModeBtn.visibility = View.GONE
+        }
+
+        if (startCaptureAutomatically) {
+            updateStartButton(enableCapture())
         }
     }
 
@@ -603,6 +653,32 @@ class OverlayService : Service(),
         )
     }
 
+    private fun updateFloatingModeButton() {
+        if (!::floatingModeBtn.isInitialized) return
+
+        floatingModeBtn.setText(
+            if (autoCaptureEnabled) {
+                R.string.overlay_mode_auto
+            } else {
+                R.string.overlay_mode_manual
+            }
+        )
+        floatingModeBtn.background = GradientDrawable().apply {
+            cornerRadius = FLOATING_MODE_HEIGHT / 2f
+            setColor(
+                if (autoCaptureEnabled) {
+                    Color.argb(210, 0, 110, 70)
+                } else {
+                    Color.argb(190, 45, 45, 45)
+                }
+            )
+            setStroke(
+                3,
+                if (autoCaptureEnabled) Color.GREEN else Color.LTGRAY
+            )
+        }
+    }
+
     private fun updateProgramButtons() {
 
         val visible = !overlayMinimized && AppMode.currentMode == AppMode.Mode.PROGRAM
@@ -622,6 +698,10 @@ class OverlayService : Service(),
             .coerceIn(0.5f, 1.8f)
         verticalScale = preferences.getFloat(PREF_VERTICAL_SCALE, DEFAULT_SCALE)
             .coerceIn(0.5f, 1.8f)
+        autoCaptureEnabled = preferences.getBoolean(
+            PREF_AUTO_CAPTURE,
+            DEFAULT_AUTO_CAPTURE
+        )
     }
 
     private fun saveGlyphLimit() {
@@ -634,6 +714,12 @@ class OverlayService : Service(),
         getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
             putFloat(PREF_HORIZONTAL_SCALE, horizontalScale)
             putFloat(PREF_VERTICAL_SCALE, verticalScale)
+        }
+    }
+
+    private fun saveAutoCaptureMode() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(PREF_AUTO_CAPTURE, autoCaptureEnabled)
         }
     }
 
@@ -652,6 +738,7 @@ class OverlayService : Service(),
         if (::modeBtn.isInitialized) removeOverlayView(modeBtn)
         if (::resetBtn.isInitialized) removeOverlayView(resetBtn)
         if (::floatingBtn.isInitialized) removeOverlayView(floatingBtn)
+        if (::floatingModeBtn.isInitialized) removeOverlayView(floatingModeBtn)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)
         if (::zoomHXMinus.isInitialized) removeOverlayView(zoomHXMinus)
         if (::zoomVPlus.isInitialized) removeOverlayView(zoomVPlus)

@@ -16,5 +16,7 @@
     <string name="overlay_start">▶</string>
     <string name="overlay_reset">↻</string>
     <string name="overlay_close">×</string>
+    <string name="overlay_mode_manual">MANUAL</string>
+    <string name="overlay_mode_auto">AUTO</string>
     <string name="program_mode_label">MODO PROGRAMAÇÃO</string>
 </resources>
