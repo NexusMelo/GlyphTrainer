@@ -295,7 +295,7 @@ class DrawView : View {
         val spacing = glyphSize * 1.2f
         val startX = 40f
 
-        for (slot in 0 until MAX_SLOTS) {
+        for (slot in 0 until maxTouches) {
 
             val x = startX + slot * spacing
             val y = 120f
@@ -335,7 +335,7 @@ class DrawView : View {
         )
         if (goVisible) {
             canvas.drawText(
-                context.getString(R.string.go_label),
+                "GO",
                 drawArea.centerX(),
                 drawArea.centerY(),
                 goPaint

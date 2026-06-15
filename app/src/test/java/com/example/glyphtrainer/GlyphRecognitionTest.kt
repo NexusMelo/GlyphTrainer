@@ -44,6 +44,11 @@ class GlyphRecognitionTest {
     }
 
     @Test
+    fun threeGlyphSequenceIsValid() {
+        assertTrue(GlyphSequence(validGlyphs(3)).isValid)
+    }
+
+    @Test
     fun fourGlyphSequenceIsValid() {
         assertTrue(GlyphSequence(validGlyphs(4)).isValid)
     }
@@ -55,7 +60,7 @@ class GlyphRecognitionTest {
 
     @Test
     fun unsupportedSequenceSizeIsInvalid() {
-        assertFalse(GlyphSequence(validGlyphs(3)).isValid)
+        assertFalse(GlyphSequence(validGlyphs(2)).isValid)
         assertFalse(GlyphSequence(validGlyphs(6)).isValid)
     }
 

@@ -46,7 +46,7 @@ class GlyphSequence(glyphs: List<GlyphSignature>) {
     override fun toString(): String = "GlyphSequence(glyphs=$glyphs)"
 
     private companion object {
-        val SUPPORTED_GLYPH_COUNTS = setOf(4, 5)
+        val SUPPORTED_GLYPH_COUNTS = setOf(3, 4, 5)
     }
 }
 

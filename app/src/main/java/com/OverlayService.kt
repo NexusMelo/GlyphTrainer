@@ -221,7 +221,7 @@ class OverlayService : Service(),
             cancelSequencePresentation()
             disableCapture()
 
-            glyphLimit = if(glyphLimit == 5) 4 else 5
+            glyphLimit = if (glyphLimit == 5) 3 else glyphLimit + 1
 
             drawView.setGlyphLimit(glyphLimit)
 
@@ -269,7 +269,7 @@ class OverlayService : Service(),
         val v = TextView(this)
         v.setText(textRes)
         v.setTextColor(textColor)
-        v.textSize = 26f
+        v.textSize = 34f
         v.gravity = Gravity.CENTER
         v.setBackgroundColor(Color.TRANSPARENT)
         v.setOnClickListener{ action() }
@@ -437,7 +437,14 @@ class OverlayService : Service(),
     }
 
     private fun updateModeButton(){
-        modeBtn.setTextColor(if (glyphLimit == 5) Color.CYAN else Color.BLUE)
+        modeBtn.setText(
+            when (glyphLimit) {
+                3 -> R.string.overlay_glyph_limit_3
+                4 -> R.string.overlay_glyph_limit_4
+                else -> R.string.overlay_glyph_limit
+            }
+        )
+        modeBtn.setTextColor(Color.CYAN)
     }
     private fun updateProgramButtons() {
 
