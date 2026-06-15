@@ -234,7 +234,7 @@ class OverlayService : Service(),
                 updateStartButton(true)
             }
         }
-        shiftButtonSymbol(startBtn, R.string.overlay_start, -20)
+        shiftButtonSymbol(startBtn, R.string.overlay_start, -30)
 
         modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN, 30f){
             cancelSequencePresentation()
@@ -255,7 +255,7 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        shiftButtonSymbol(resetBtn, R.string.overlay_reset, -16)
+        shiftButtonSymbol(resetBtn, R.string.overlay_reset, -24)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             drawView.adjustHorizontal(1f)
         }
