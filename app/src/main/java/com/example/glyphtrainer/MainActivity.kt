@@ -215,7 +215,7 @@ class DrawView : View {
     // ---------- PAINTS ----------
 
     private val borderPaint = Paint().apply {
-        color = Color.argb(220,0,255,120)
+        color = AppThemeConfig.colors(AppThemeConfig.DEFAULT_THEME).outline
         strokeWidth = 5f
         style = Paint.Style.STROKE
         isAntiAlias = true
@@ -239,7 +239,7 @@ class DrawView : View {
         textAlign = Paint.Align.CENTER
     }
     private val slotBorderPaint = Paint().apply {
-        color = Color.BLUE
+        color = AppThemeConfig.colors(AppThemeConfig.DEFAULT_THEME).accent
         style = Paint.Style.STROKE
         strokeWidth = 4f
         isAntiAlias = true
@@ -488,6 +488,13 @@ class DrawView : View {
     fun setGlyphScales(horizontal: Float, vertical: Float) {
         horizontalScale = horizontal.coerceIn(0.5f, 1.8f)
         verticalScale = vertical.coerceIn(0.5f, 1.8f)
+        invalidate()
+    }
+
+    fun setAppColorTheme(theme: AppColorTheme) {
+        val colors = AppThemeConfig.colors(theme)
+        borderPaint.color = colors.outline
+        slotBorderPaint.color = colors.accent
         invalidate()
     }
 

@@ -18,8 +18,10 @@
     <string name="overlay_close">×</string>
     <string name="overlay_mode_manual">MANUAL</string>
     <string name="overlay_mode_auto">AUTO</string>
-    <string name="tutorial_toggle_on">Tutorial ON</string>
-    <string name="tutorial_toggle_off">Tutorial OFF</string>
+    <string name="tutorial_label">Tutorial</string>
+    <string name="tutorial_toggle_on_short">ON</string>
+    <string name="tutorial_toggle_off_short">OFF</string>
+    <string name="theme_label">Tema</string>
     <string name="tutorial_close">×</string>
     <string name="tutorial_back">←</string>
     <string name="tutorial_next">→</string>
