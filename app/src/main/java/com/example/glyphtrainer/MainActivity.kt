@@ -13,7 +13,6 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.hypot
 import androidx.core.view.WindowCompat
-import androidx.core.graphics.withTranslation
 import com.OverlayService
 
 class MainActivity : Activity() {
@@ -100,8 +99,11 @@ class DrawView : View {
     )
     private var horizontalScale = 1f
     private var verticalScale = 1f
-    private val visualArea = RectF()
+    private val captureAreaBounds = RectF()
     private val glyphArea = RectF()
+    private val previewBoxBounds = RectF()
+    private val pathTransform = Matrix()
+    private val renderPath = Path()
     private fun drawNodes(canvas: Canvas){
 
         val radius = glyphArea.width() * 0.035f
@@ -114,8 +116,8 @@ class DrawView : View {
             val scaledX = cx + (node.x - cx) * horizontalScale
             val scaledY = cy + (node.y - cy) * verticalScale
 
-            val x = visualArea.left + scaledX * visualArea.width()
-            val y = visualArea.top + scaledY * visualArea.height()
+            val x = captureAreaBounds.left + scaledX * captureAreaBounds.width()
+            val y = captureAreaBounds.top + scaledY * captureAreaBounds.height()
 
             canvas.drawCircle(x, y, radius, nodePaint)
         }
@@ -176,7 +178,7 @@ class DrawView : View {
         )
         val expand = 60f  // tamanho extra do quadrado verde
 
-        visualArea.set(
+        captureAreaBounds.set(
             drawArea.left - expand,
             drawArea.top - expand,
             drawArea.right + expand,
@@ -284,14 +286,12 @@ class DrawView : View {
     override fun onDraw(canvas: Canvas) {
 
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-            canvas.drawRect(visualArea, borderPaint)
+            canvas.drawRect(captureAreaBounds, borderPaint)
 
         replayGlyphIndex
             ?.let(saved::getOrNull)
             ?.let { path ->
-                canvas.drawPath(path, paintGlowOuter)
-                canvas.drawPath(path, paintGlowMid)
-                canvas.drawPath(path, paintCore)
+                drawSavedPath(canvas, path, captureAreaBounds)
             }
 
         val glyphSize = width / 6f
@@ -316,13 +316,8 @@ class DrawView : View {
 
             val path = saved[slot] ?: continue
 
-            canvas.withTranslation(x, y) {
-                scale(glyphSize / width, glyphSize / width)
-
-                drawPath(path, paintGlowOuter)
-                drawPath(path, paintGlowMid)
-                drawPath(path, paintCore)
-            }
+            previewBoxBounds.set(x, boxY, x + glyphSize, boxY + glyphSize)
+            drawSavedPath(canvas, path, previewBoxBounds)
         }
 
         if(captureEnabled){
@@ -355,6 +350,50 @@ class DrawView : View {
         }
     }
 
+    private fun drawSavedPath(canvas: Canvas, normalizedPath: Path, target: RectF) {
+        if (captureAreaBounds.isEmpty || target.isEmpty) return
+
+        pathTransform.reset()
+        pathTransform.setScale(target.width(), target.height())
+        pathTransform.postTranslate(target.left, target.top)
+        renderPath.reset()
+        normalizedPath.transform(pathTransform, renderPath)
+
+        val strokeScale = target.width() / captureAreaBounds.width()
+        drawPathWithStrokeScale(canvas, renderPath, strokeScale)
+    }
+
+    private fun drawPathWithStrokeScale(canvas: Canvas, path: Path, strokeScale: Float) {
+        val coreStroke = paintCore.strokeWidth
+        val midStroke = paintGlowMid.strokeWidth
+        val outerStroke = paintGlowOuter.strokeWidth
+
+        paintCore.strokeWidth = coreStroke * strokeScale
+        paintGlowMid.strokeWidth = midStroke * strokeScale
+        paintGlowOuter.strokeWidth = outerStroke * strokeScale
+
+        canvas.drawPath(path, paintGlowOuter)
+        canvas.drawPath(path, paintGlowMid)
+        canvas.drawPath(path, paintCore)
+
+        paintCore.strokeWidth = coreStroke
+        paintGlowMid.strokeWidth = midStroke
+        paintGlowOuter.strokeWidth = outerStroke
+    }
+
+    private fun normalizedCurrentPath(): Path {
+        pathTransform.reset()
+        pathTransform.setTranslate(-captureAreaBounds.left, -captureAreaBounds.top)
+        pathTransform.postScale(
+            1f / captureAreaBounds.width(),
+            1f / captureAreaBounds.height()
+        )
+
+        return Path(currentPath).apply {
+            transform(pathTransform)
+        }
+    }
+
     // =====================================================
     // TOUCH SYSTEM
     // =====================================================
@@ -373,7 +412,7 @@ class DrawView : View {
 
             MotionEvent.ACTION_DOWN -> {
 
-                if(!visualArea.contains(event.x,event.y)) return true
+                if(!captureAreaBounds.contains(event.x,event.y)) return true
                 if(gestureActive) return true
 
                 gestureActive = true
@@ -391,7 +430,7 @@ class DrawView : View {
                 if(!gestureActive) return true
 
                 // 🔥 saiu da zona → termina logo
-                if(!visualArea.contains(event.x,event.y) && gestureDistance > MIN_GESTURE_DISTANCE / 2){
+                if(!captureAreaBounds.contains(event.x,event.y) && gestureDistance > MIN_GESTURE_DISTANCE / 2){
                     finishGesture()
                     return true
                 }
@@ -437,7 +476,7 @@ class DrawView : View {
         }
 
         if (touchCount < maxTouches) {
-            saved[touchCount] = Path(currentPath)
+            saved[touchCount] = normalizedCurrentPath()
             touchCount++
         }
 
