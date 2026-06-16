@@ -33,6 +33,7 @@ import com.example.glyphtrainer.AppThemeColors
 import com.example.glyphtrainer.AppMode
 import com.example.glyphtrainer.DrawView
 import com.example.glyphtrainer.R
+import com.example.glyphtrainer.TutorialHudUi
 import kotlin.math.abs
 
 class OverlayService : Service(),
@@ -109,6 +110,7 @@ class OverlayService : Service(),
     private lateinit var tutorialBody: TextView
     private lateinit var tutorialBackBtn: TextView
     private lateinit var tutorialNextBtn: TextView
+    private val tutorialIndicators = mutableListOf<TextView>()
     private lateinit var zoomHXPlus: TextView
     private lateinit var zoomHXMinus: TextView
     private lateinit var zoomVPlus: TextView
@@ -543,7 +545,7 @@ class OverlayService : Service(),
     }
 
     private fun createTutorialControls() {
-        tutorialLabel = makeHudControlLabel(R.string.tutorial_label)
+        tutorialLabel = TutorialHudUi.makeControlLabel(this, R.string.tutorial_label)
         tutorialLabelParams = createHudControlParams(
             TUTORIAL_LABEL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
@@ -552,7 +554,7 @@ class OverlayService : Service(),
             touchable = false
         )
 
-        tutorialToggleBtn = makeHudControlButton().apply {
+        tutorialToggleBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
                 showTutorialOnLaunch = !showTutorialOnLaunch
                 saveTutorialLaunchPreference()
@@ -572,7 +574,7 @@ class OverlayService : Service(),
         )
 
         val secondRowY = TUTORIAL_BUTTON_MARGIN + TUTORIAL_BUTTON_HEIGHT + THEME_CONTROL_ROW_GAP
-        themeLabel = makeHudControlLabel(R.string.theme_label)
+        themeLabel = TutorialHudUi.makeControlLabel(this, R.string.theme_label)
         themeLabelParams = createHudControlParams(
             TUTORIAL_LABEL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
@@ -581,7 +583,7 @@ class OverlayService : Service(),
             touchable = false
         )
 
-        themeBtn = makeHudControlButton().apply {
+        themeBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
                 currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
                 saveColorTheme()
@@ -635,7 +637,7 @@ class OverlayService : Service(),
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
         }
 
-        tutorialCloseBtn = makeTutorialButton(R.string.tutorial_close, 30f).apply {
+        tutorialCloseBtn = TutorialHudUi.makeTutorialButton(this, R.string.tutorial_close, 30f).apply {
             setOnClickListener { hideTutorial() }
         }
         header.addView(
@@ -672,23 +674,35 @@ class OverlayService : Service(),
             gravity = Gravity.CENTER
         }
 
-        tutorialBackBtn = makeTutorialButton(R.string.tutorial_back, 36f).apply {
+        tutorialBackBtn = TutorialHudUi.makeTutorialButton(this, R.string.tutorial_back, 36f).apply {
             setOnClickListener {
                 if (tutorialStepIndex > 0) {
                     showTutorial(tutorialStepIndex - 1)
                 }
             }
         }
-        nav.addView(tutorialBackBtn, LinearLayout.LayoutParams(128, 72))
+        nav.addView(tutorialBackBtn, LinearLayout.LayoutParams(118, 70))
 
-        tutorialNextBtn = makeTutorialButton(R.string.tutorial_next, 36f).apply {
+        val indicators = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        tutorialIndicators.clear()
+        repeat(tutorialSteps.size) {
+            val dot = TutorialHudUi.makeIndicatorDot(this@OverlayService)
+            tutorialIndicators.add(dot)
+            indicators.addView(dot, LinearLayout.LayoutParams(28, 46))
+        }
+        nav.addView(indicators, LinearLayout.LayoutParams(0, 70, 1f))
+
+        tutorialNextBtn = TutorialHudUi.makeTutorialButton(this, R.string.tutorial_next, 36f).apply {
             setOnClickListener {
                 if (tutorialStepIndex < tutorialSteps.lastIndex) {
                     showTutorial(tutorialStepIndex + 1)
                 }
             }
         }
-        nav.addView(tutorialNextBtn, LinearLayout.LayoutParams(128, 72))
+        nav.addView(tutorialNextBtn, LinearLayout.LayoutParams(118, 70))
 
         tutorialCard.addView(
             nav,
@@ -710,25 +724,6 @@ class OverlayService : Service(),
         addOverlayView(themeBtn, themeParams)
 
         applyCurrentTheme()
-    }
-
-    private fun makeHudControlLabel(@StringRes textRes: Int): TextView {
-        return TextView(this).apply {
-            setText(textRes)
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-        }
-    }
-
-    private fun makeHudControlButton(): TextView {
-        return TextView(this).apply {
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-        }
     }
 
     private fun createHudControlParams(
@@ -756,21 +751,6 @@ class OverlayService : Service(),
             gravity = Gravity.TOP or Gravity.START
             x = xPos
             y = yPos
-        }
-    }
-
-    private fun makeTutorialButton(@StringRes textRes: Int, textSize: Float): TextView {
-        return TextView(this).apply {
-            setText(textRes)
-            this.textSize = textSize
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-            background = GradientDrawable().apply {
-                cornerRadius = 18f
-                setColor(Color.argb(180, 55, 55, 55))
-                setStroke(2, Color.argb(220, 255, 255, 255))
-            }
         }
     }
 
@@ -1222,62 +1202,43 @@ class OverlayService : Service(),
             tutorialLayer.setBackgroundColor(Color.argb(86, 0, 0, 0))
         }
         if (::tutorialCard.isInitialized) {
-            tutorialCard.background = makeHudPanelBackground(colors)
+            tutorialCard.background = TutorialHudUi.panelBackground(colors)
         }
         if (::tutorialPointer.isInitialized) {
-            tutorialPointer.setTextColor(colors.accent)
+            TutorialHudUi.stylePointer(tutorialPointer, colors)
         }
         if (::tutorialBody.isInitialized) {
             tutorialBody.setTextColor(colors.text)
         }
         if (::tutorialCloseBtn.isInitialized) {
-            styleHudButton(tutorialCloseBtn, colors)
+            TutorialHudUi.styleButton(tutorialCloseBtn, colors)
         }
         if (::tutorialBackBtn.isInitialized) {
-            styleHudButton(tutorialBackBtn, colors)
+            TutorialHudUi.styleButton(tutorialBackBtn, colors)
         }
         if (::tutorialNextBtn.isInitialized) {
-            styleHudButton(tutorialNextBtn, colors)
+            TutorialHudUi.styleButton(tutorialNextBtn, colors)
         }
         if (::tutorialLabel.isInitialized) {
-            styleHudLabel(tutorialLabel, colors)
+            TutorialHudUi.styleLabel(tutorialLabel, colors)
         }
         if (::themeLabel.isInitialized) {
-            styleHudLabel(themeLabel, colors)
+            TutorialHudUi.styleLabel(themeLabel, colors)
         }
         if (::tutorialToggleBtn.isInitialized) {
-            styleHudButton(tutorialToggleBtn, colors)
+            TutorialHudUi.styleButton(tutorialToggleBtn, colors)
             updateTutorialToggleButton()
         }
         if (::themeBtn.isInitialized) {
-            styleHudButton(themeBtn, colors)
+            TutorialHudUi.styleButton(themeBtn, colors)
             updateThemeButton()
         }
+        updateTutorialIndicators(colors)
     }
 
-    private fun styleHudLabel(label: TextView, colors: AppThemeColors) {
-        label.setTextColor(colors.text)
-        label.background = GradientDrawable().apply {
-            cornerRadius = 8f
-            setColor(Color.argb(90, 0, 0, 0))
-            setStroke(1, colors.accentSoft)
-        }
-    }
-
-    private fun styleHudButton(button: TextView, colors: AppThemeColors) {
-        button.setTextColor(colors.text)
-        button.background = GradientDrawable().apply {
-            cornerRadius = 10f
-            setColor(colors.buttonBackground)
-            setStroke(3, colors.outline)
-        }
-    }
-
-    private fun makeHudPanelBackground(colors: AppThemeColors): GradientDrawable {
-        return GradientDrawable().apply {
-            cornerRadius = 10f
-            setColor(colors.panelBackground)
-            setStroke(4, colors.outline)
+    private fun updateTutorialIndicators(colors: AppThemeColors) {
+        tutorialIndicators.forEachIndexed { index, dot ->
+            TutorialHudUi.styleIndicator(dot, colors, index == tutorialStepIndex)
         }
     }
 
@@ -1291,6 +1252,7 @@ class OverlayService : Service(),
         tutorialBackBtn.visibility = if (tutorialStepIndex == 0) View.INVISIBLE else View.VISIBLE
         tutorialNextBtn.visibility =
             if (tutorialStepIndex == tutorialSteps.lastIndex) View.INVISIBLE else View.VISIBLE
+        updateTutorialIndicators(AppThemeConfig.colors(currentColorTheme))
 
         positionTutorialStep(step.target)
         tutorialLayer.visibility = View.VISIBLE
