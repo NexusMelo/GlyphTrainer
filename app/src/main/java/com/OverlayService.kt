@@ -20,6 +20,8 @@ import android.view.WindowManager
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.graphics.Color
 import android.view.Gravity
@@ -43,9 +45,16 @@ class OverlayService : Service(),
         const val PREF_AUTO_CAPTURE = "auto_capture"
         const val PREF_FLOATING_GROUP_X = "floating_group_x"
         const val PREF_FLOATING_GROUP_Y = "floating_group_y"
+        const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
+        const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
+        const val PREF_PREMIUM_ENABLED = "premium_enabled"
+        const val PREF_AUTO_CAPTURE_USES = "auto_capture_uses"
+        const val PREF_FLOATING_DRAG_USES = "floating_drag_uses"
         const val DEFAULT_GLYPH_LIMIT = 5
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
+        const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
+        const val DEFAULT_PREMIUM_ENABLED = false
         const val FLOATING_BUTTON_SIZE = 132
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
@@ -62,6 +71,13 @@ class OverlayService : Service(),
         const val REPLAY_GLYPH_DURATION_MS = 1_750L
         const val REPLAY_GLYPH_GAP_MS = 0L
         const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
+        const val TUTORIAL_BUTTON_WIDTH = 176
+        const val TUTORIAL_BUTTON_HEIGHT = 56
+        const val TUTORIAL_BUTTON_MARGIN = 24
+        const val TUTORIAL_CARD_WIDTH = 480
+        const val TUTORIAL_CARD_HEIGHT = 220
+        const val TUTORIAL_CARD_MARGIN = 24
+        const val TUTORIAL_POINTER_SIZE = 44
     }
 
     private lateinit var wm: WindowManager
@@ -75,6 +91,15 @@ class OverlayService : Service(),
     private lateinit var floatingBtn: TextView
     private lateinit var floatingModeBtn: TextView
     private lateinit var floatingCloseBtn: TextView
+    private lateinit var tutorialToggleBtn: TextView
+    private lateinit var tutorialLayer: FrameLayout
+    private lateinit var tutorialPointer: TextView
+    private lateinit var tutorialCard: LinearLayout
+    private lateinit var tutorialCloseBtn: TextView
+    private lateinit var tutorialTitle: TextView
+    private lateinit var tutorialBody: TextView
+    private lateinit var tutorialBackBtn: TextView
+    private lateinit var tutorialNextBtn: TextView
     private lateinit var zoomHXPlus: TextView
     private lateinit var zoomHXMinus: TextView
     private lateinit var zoomVPlus: TextView
@@ -93,6 +118,8 @@ class OverlayService : Service(),
     private lateinit var floatingParams: WindowManager.LayoutParams
     private lateinit var floatingModeParams: WindowManager.LayoutParams
     private lateinit var floatingCloseParams: WindowManager.LayoutParams
+    private lateinit var tutorialToggleParams: WindowManager.LayoutParams
+    private lateinit var tutorialLayerParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
     private val buttonSize = 96
@@ -172,12 +199,75 @@ class OverlayService : Service(),
     private var horizontalScale = DEFAULT_SCALE
     private var verticalScale = DEFAULT_SCALE
     private var autoCaptureEnabled = DEFAULT_AUTO_CAPTURE
+    private var showTutorialOnLaunch = DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
+    private var firstLaunchTutorialPending = false
     private var capturing = false
     private var replayIndex = 0
     private var replayGlyphVisible = false
+    private var tutorialStepIndex = 0
     private var overlayMinimized = false
     private var creationFailed = false
     private var permissionListenerRegistered = false
+
+    private data class TutorialStep(
+        val titleRes: Int,
+        val bodyRes: Int,
+        val target: TutorialTarget
+    )
+
+    private enum class TutorialTarget {
+        CAPTURE_AREA,
+        MODE_BUTTON,
+        START_BUTTON,
+        RESET_BUTTON,
+        CLOSE_BUTTON,
+        GO_MESSAGE,
+        FLOATING_BUTTON,
+        FLOATING_MODE
+    }
+
+    private val tutorialSteps = listOf(
+        TutorialStep(
+            R.string.tutorial_step_1_title,
+            R.string.tutorial_step_1_body,
+            TutorialTarget.CAPTURE_AREA
+        ),
+        TutorialStep(
+            R.string.tutorial_step_2_title,
+            R.string.tutorial_step_2_body,
+            TutorialTarget.MODE_BUTTON
+        ),
+        TutorialStep(
+            R.string.tutorial_step_3_title,
+            R.string.tutorial_step_3_body,
+            TutorialTarget.START_BUTTON
+        ),
+        TutorialStep(
+            R.string.tutorial_step_4_title,
+            R.string.tutorial_step_4_body,
+            TutorialTarget.RESET_BUTTON
+        ),
+        TutorialStep(
+            R.string.tutorial_step_5_title,
+            R.string.tutorial_step_5_body,
+            TutorialTarget.CLOSE_BUTTON
+        ),
+        TutorialStep(
+            R.string.tutorial_step_6_title,
+            R.string.tutorial_step_6_body,
+            TutorialTarget.GO_MESSAGE
+        ),
+        TutorialStep(
+            R.string.tutorial_step_7_title,
+            R.string.tutorial_step_7_body,
+            TutorialTarget.FLOATING_BUTTON
+        ),
+        TutorialStep(
+            R.string.tutorial_step_8_title,
+            R.string.tutorial_step_8_body,
+            TutorialTarget.FLOATING_MODE
+        )
+    )
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -205,11 +295,19 @@ class OverlayService : Service(),
         createFloatingControls()
         if (creationFailed) return
 
+        createTutorialControls()
+        if (creationFailed) return
+
         disableCapture()
         updateStartButton(false)
         updateModeButton()
         updateProgramButtons()
+        updateTutorialToggleButton()
         registerOverlayPermissionListener()
+
+        if (firstLaunchTutorialPending || showTutorialOnLaunch) {
+            mainHandler.postDelayed({ showTutorial() }, 250L)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -437,6 +535,176 @@ class OverlayService : Service(),
         applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
         updateFloatingButton()
         updateFloatingModeButton()
+    }
+
+    private fun createTutorialControls() {
+        tutorialToggleBtn = TextView(this).apply {
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                cornerRadius = TUTORIAL_BUTTON_HEIGHT / 2f
+                setColor(Color.argb(150, 20, 20, 20))
+                setStroke(2, Color.argb(160, 255, 255, 255))
+            }
+            setOnClickListener {
+                showTutorialOnLaunch = !showTutorialOnLaunch
+                saveTutorialLaunchPreference()
+                updateTutorialToggleButton()
+                if (showTutorialOnLaunch) {
+                    showTutorial()
+                } else {
+                    hideTutorial()
+                }
+            }
+        }
+
+        tutorialToggleParams = WindowManager.LayoutParams(
+            TUTORIAL_BUTTON_WIDTH,
+            TUTORIAL_BUTTON_HEIGHT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = TUTORIAL_BUTTON_MARGIN
+            y = TUTORIAL_BUTTON_MARGIN
+        }
+
+        addOverlayView(tutorialToggleBtn, tutorialToggleParams)
+
+        tutorialLayer = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(80, 0, 0, 0))
+            visibility = View.GONE
+            isClickable = true
+        }
+
+        tutorialLayerParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+
+        tutorialPointer = TextView(this).apply {
+            textSize = 34f
+            setTextColor(Color.YELLOW)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+        }
+        tutorialLayer.addView(
+            tutorialPointer,
+            FrameLayout.LayoutParams(TUTORIAL_POINTER_SIZE, TUTORIAL_POINTER_SIZE)
+        )
+
+        tutorialCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 18, 24, 18)
+            background = GradientDrawable().apply {
+                cornerRadius = 24f
+                setColor(Color.argb(220, 15, 15, 15))
+                setStroke(2, Color.argb(200, 255, 255, 255))
+            }
+        }
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        tutorialTitle = TextView(this).apply {
+            textSize = 19f
+            setTextColor(Color.WHITE)
+            includeFontPadding = false
+        }
+        header.addView(
+            tutorialTitle,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+
+        tutorialCloseBtn = makeTutorialButton(R.string.tutorial_close, 26f).apply {
+            setOnClickListener { hideTutorial() }
+        }
+        header.addView(
+            tutorialCloseBtn,
+            LinearLayout.LayoutParams(56, 48)
+        )
+        tutorialCard.addView(
+            header,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        tutorialBody = TextView(this).apply {
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setPadding(0, 18, 0, 16)
+        }
+        tutorialCard.addView(
+            tutorialBody,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
+
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        tutorialBackBtn = makeTutorialButton(R.string.tutorial_back, 28f).apply {
+            setOnClickListener {
+                if (tutorialStepIndex > 0) {
+                    showTutorial(tutorialStepIndex - 1)
+                }
+            }
+        }
+        nav.addView(tutorialBackBtn, LinearLayout.LayoutParams(96, 52))
+
+        tutorialNextBtn = makeTutorialButton(R.string.tutorial_next, 28f).apply {
+            setOnClickListener {
+                if (tutorialStepIndex < tutorialSteps.lastIndex) {
+                    showTutorial(tutorialStepIndex + 1)
+                }
+            }
+        }
+        nav.addView(tutorialNextBtn, LinearLayout.LayoutParams(96, 52))
+
+        tutorialCard.addView(
+            nav,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        tutorialLayer.addView(
+            tutorialCard,
+            FrameLayout.LayoutParams(TUTORIAL_CARD_WIDTH, TUTORIAL_CARD_HEIGHT)
+        )
+
+        addOverlayView(tutorialLayer, tutorialLayerParams)
+    }
+
+    private fun makeTutorialButton(@StringRes textRes: Int, textSize: Float): TextView {
+        return TextView(this).apply {
+            setText(textRes)
+            this.textSize = textSize
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                cornerRadius = 18f
+                setColor(Color.argb(120, 40, 40, 40))
+            }
+        }
     }
 
     private fun handleFloatingDrag(view: View, event: MotionEvent): Boolean {
@@ -721,6 +989,10 @@ class OverlayService : Service(),
         drawView.resetGlyphs()
         drawView.visibility = View.GONE
         setMainControlsVisibility(View.GONE)
+        hideTutorial()
+        if (::tutorialToggleBtn.isInitialized) {
+            tutorialToggleBtn.visibility = View.GONE
+        }
         updateProgramButtons()
 
         if (::floatingBtn.isInitialized) {
@@ -746,6 +1018,9 @@ class OverlayService : Service(),
         drawView.setGlyphScales(horizontalScale, verticalScale)
         drawView.visibility = View.VISIBLE
         setMainControlsVisibility(View.VISIBLE)
+        if (::tutorialToggleBtn.isInitialized) {
+            tutorialToggleBtn.visibility = View.VISIBLE
+        }
         overlayMinimized = false
         updateStartButton(false)
         updateModeButton()
@@ -834,6 +1109,146 @@ class OverlayService : Service(),
         }
     }
 
+    private fun updateTutorialToggleButton() {
+        if (!::tutorialToggleBtn.isInitialized) return
+
+        tutorialToggleBtn.setText(
+            if (showTutorialOnLaunch) {
+                R.string.tutorial_toggle_on
+            } else {
+                R.string.tutorial_toggle_off
+            }
+        )
+    }
+
+    private fun showTutorial(stepIndex: Int = 0) {
+        if (!::tutorialLayer.isInitialized || tutorialSteps.isEmpty()) return
+
+        tutorialStepIndex = stepIndex.coerceIn(0, tutorialSteps.lastIndex)
+        val step = tutorialSteps[tutorialStepIndex]
+
+        tutorialTitle.setText(step.titleRes)
+        tutorialBody.setText(step.bodyRes)
+        tutorialBackBtn.visibility = if (tutorialStepIndex == 0) View.INVISIBLE else View.VISIBLE
+        tutorialNextBtn.visibility =
+            if (tutorialStepIndex == tutorialSteps.lastIndex) View.INVISIBLE else View.VISIBLE
+
+        positionTutorialStep(step.target)
+        tutorialLayer.visibility = View.VISIBLE
+    }
+
+    private fun hideTutorial() {
+        if (::tutorialLayer.isInitialized) {
+            tutorialLayer.visibility = View.GONE
+        }
+    }
+
+    private fun positionTutorialStep(target: TutorialTarget) {
+        val targetRect = getTutorialTargetRect(target)
+        val screenWidth = drawView.width.takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+        val screenHeight = drawView.height.takeIf { it > 0 }
+            ?: resources.displayMetrics.heightPixels
+        val cardWidth = TUTORIAL_CARD_WIDTH.coerceAtMost(screenWidth - TUTORIAL_CARD_MARGIN * 2)
+        val cardHeight = TUTORIAL_CARD_HEIGHT
+        val cardAbove = targetRect.centerY() > screenHeight / 2f
+        val rawCardX = (targetRect.centerX() - cardWidth / 2f).toInt()
+        val rawCardY = if (cardAbove) {
+            (targetRect.top - cardHeight - TUTORIAL_CARD_MARGIN).toInt()
+        } else {
+            (targetRect.bottom + TUTORIAL_CARD_MARGIN).toInt()
+        }
+        val cardX = rawCardX.coerceIn(
+            TUTORIAL_CARD_MARGIN,
+            (screenWidth - cardWidth - TUTORIAL_CARD_MARGIN).coerceAtLeast(TUTORIAL_CARD_MARGIN)
+        )
+        val cardY = rawCardY.coerceIn(
+            TUTORIAL_CARD_MARGIN,
+            (screenHeight - cardHeight - TUTORIAL_CARD_MARGIN).coerceAtLeast(TUTORIAL_CARD_MARGIN)
+        )
+
+        (tutorialCard.layoutParams as FrameLayout.LayoutParams).apply {
+            width = cardWidth
+            height = cardHeight
+            leftMargin = cardX
+            topMargin = cardY
+        }
+        tutorialCard.requestLayout()
+
+        tutorialPointer.setText(
+            if (cardAbove) {
+                R.string.tutorial_pointer_down
+            } else {
+                R.string.tutorial_pointer_up
+            }
+        )
+        val pointerX = (targetRect.centerX() - TUTORIAL_POINTER_SIZE / 2f).toInt()
+            .coerceIn(0, (screenWidth - TUTORIAL_POINTER_SIZE).coerceAtLeast(0))
+        val pointerY = if (cardAbove) {
+            cardY + cardHeight
+        } else {
+            cardY - TUTORIAL_POINTER_SIZE
+        }.coerceIn(0, (screenHeight - TUTORIAL_POINTER_SIZE).coerceAtLeast(0))
+
+        (tutorialPointer.layoutParams as FrameLayout.LayoutParams).apply {
+            leftMargin = pointerX
+            topMargin = pointerY
+        }
+        tutorialPointer.requestLayout()
+    }
+
+    private fun getTutorialTargetRect(target: TutorialTarget): RectF {
+        val fallbackWidth = resources.displayMetrics.widthPixels.toFloat()
+        val fallbackHeight = resources.displayMetrics.heightPixels.toFloat()
+        val screenWidth = drawView.width.takeIf { it > 0 }?.toFloat() ?: fallbackWidth
+
+        return when (target) {
+            TutorialTarget.CAPTURE_AREA -> {
+                if (!drawArea.isEmpty) {
+                    RectF(drawArea)
+                } else {
+                    RectF(
+                        screenWidth * 0.25f,
+                        fallbackHeight * 0.32f,
+                        screenWidth * 0.75f,
+                        fallbackHeight * 0.70f
+                    )
+                }
+            }
+            TutorialTarget.MODE_BUTTON -> paramsRect(modeParams, false)
+            TutorialTarget.START_BUTTON -> paramsRect(startParams, false)
+            TutorialTarget.RESET_BUTTON -> paramsRect(resetParams, false)
+            TutorialTarget.CLOSE_BUTTON -> paramsRect(closeParams, false)
+            TutorialTarget.GO_MESSAGE -> RectF(
+                drawArea.centerX() - 90f,
+                drawArea.centerY() - 90f,
+                drawArea.centerX() + 90f,
+                drawArea.centerY() + 90f
+            )
+            TutorialTarget.FLOATING_BUTTON -> paramsRect(floatingParams, true)
+            TutorialTarget.FLOATING_MODE -> paramsRect(floatingModeParams, true)
+        }
+    }
+
+    private fun paramsRect(
+        params: WindowManager.LayoutParams,
+        gravityEnd: Boolean
+    ): RectF {
+        val width = params.width.takeIf { it > 0 } ?: 1
+        val height = params.height.takeIf { it > 0 } ?: 1
+        val screenWidth = drawView.width.takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+        val left = if (gravityEnd) screenWidth - params.x - width else params.x
+        val top = params.y
+
+        return RectF(
+            left.toFloat(),
+            top.toFloat(),
+            (left + width).toFloat(),
+            (top + height).toFloat()
+        )
+    }
+
     private fun updateProgramButtons() {
 
         val visible = !overlayMinimized && AppMode.currentMode == AppMode.Mode.PROGRAM
@@ -847,6 +1262,14 @@ class OverlayService : Service(),
 
     private fun restorePreferences() {
         val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        firstLaunchTutorialPending = !preferences.getBoolean(
+            PREF_TUTORIAL_INITIALIZED,
+            false
+        )
+        showTutorialOnLaunch = preferences.getBoolean(
+            PREF_SHOW_TUTORIAL_ON_LAUNCH,
+            DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
+        )
         glyphLimit = preferences.getInt(PREF_GLYPH_LIMIT, DEFAULT_GLYPH_LIMIT)
             .coerceIn(3, 5)
         horizontalScale = preferences.getFloat(PREF_HORIZONTAL_SCALE, DEFAULT_SCALE)
@@ -865,6 +1288,22 @@ class OverlayService : Service(),
             PREF_FLOATING_GROUP_Y,
             FLOATING_BUTTON_TOP
         )
+
+        preferences.edit {
+            if (firstLaunchTutorialPending) {
+                putBoolean(PREF_TUTORIAL_INITIALIZED, true)
+                putBoolean(PREF_SHOW_TUTORIAL_ON_LAUNCH, DEFAULT_SHOW_TUTORIAL_ON_LAUNCH)
+            }
+            if (!preferences.contains(PREF_PREMIUM_ENABLED)) {
+                putBoolean(PREF_PREMIUM_ENABLED, DEFAULT_PREMIUM_ENABLED)
+            }
+            if (!preferences.contains(PREF_AUTO_CAPTURE_USES)) {
+                putInt(PREF_AUTO_CAPTURE_USES, 0)
+            }
+            if (!preferences.contains(PREF_FLOATING_DRAG_USES)) {
+                putInt(PREF_FLOATING_DRAG_USES, 0)
+            }
+        }
     }
 
     private fun saveGlyphLimit() {
@@ -883,6 +1322,12 @@ class OverlayService : Service(),
     private fun saveAutoCaptureMode() {
         getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
             putBoolean(PREF_AUTO_CAPTURE, autoCaptureEnabled)
+        }
+    }
+
+    private fun saveTutorialLaunchPreference() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(PREF_SHOW_TUTORIAL_ON_LAUNCH, showTutorialOnLaunch)
         }
     }
 
@@ -910,6 +1355,8 @@ class OverlayService : Service(),
         if (::floatingBtn.isInitialized) removeOverlayView(floatingBtn)
         if (::floatingModeBtn.isInitialized) removeOverlayView(floatingModeBtn)
         if (::floatingCloseBtn.isInitialized) removeOverlayView(floatingCloseBtn)
+        if (::tutorialToggleBtn.isInitialized) removeOverlayView(tutorialToggleBtn)
+        if (::tutorialLayer.isInitialized) removeOverlayView(tutorialLayer)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)
         if (::zoomHXMinus.isInitialized) removeOverlayView(zoomHXMinus)
         if (::zoomVPlus.isInitialized) removeOverlayView(zoomVPlus)
