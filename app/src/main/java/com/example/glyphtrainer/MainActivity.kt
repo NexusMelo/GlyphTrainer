@@ -156,7 +156,6 @@ class DrawView : View {
 
     private val MAX_SLOTS = 5
     private val MAIN_OVERLAY_VERTICAL_OFFSET = 40f
-    private val BOTTOM_CONTROLS_EXTRA_OFFSET = 40f
     private val drawArea = RectF()
     private var stableLayoutHeight = 0
 
@@ -333,7 +332,7 @@ class DrawView : View {
         canvas.drawText(
             "$touchCount / $maxTouches",
             drawArea.centerX()-40f,
-            drawArea.bottom+90f + BOTTOM_CONTROLS_EXTRA_OFFSET,
+            drawArea.bottom+90f,
             textPaint
         )
         if (goVisible) {

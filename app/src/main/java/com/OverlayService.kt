@@ -77,12 +77,10 @@ class OverlayService : Service(),
         const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
         const val TUTORIAL_BUTTON_HEIGHT = 64
         const val TUTORIAL_BUTTON_MARGIN = 24
-        const val CONTROL_LABEL_HEIGHT = 34
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
         const val TOP_CONTROL_GAP = 24
-        const val TOP_CONTROL_LABEL_GAP = 16
-        const val BOTTOM_CONTROLS_EXTRA_OFFSET = 40f
+        const val BOTTOM_CONTROLS_EXTRA_OFFSET = 100f
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
@@ -100,9 +98,7 @@ class OverlayService : Service(),
     private lateinit var floatingBtn: TextView
     private lateinit var floatingModeBtn: TextView
     private lateinit var floatingCloseBtn: TextView
-    private lateinit var tutorialLabel: TextView
     private lateinit var tutorialToggleBtn: TextView
-    private lateinit var themeLabel: TextView
     private lateinit var themeBtn: TextView
     private lateinit var tutorialLayer: FrameLayout
     private lateinit var tutorialPointer: TextView
@@ -130,9 +126,7 @@ class OverlayService : Service(),
     private lateinit var floatingParams: WindowManager.LayoutParams
     private lateinit var floatingModeParams: WindowManager.LayoutParams
     private lateinit var floatingCloseParams: WindowManager.LayoutParams
-    private lateinit var tutorialLabelParams: WindowManager.LayoutParams
     private lateinit var tutorialToggleParams: WindowManager.LayoutParams
-    private lateinit var themeLabelParams: WindowManager.LayoutParams
     private lateinit var themeParams: WindowManager.LayoutParams
     private lateinit var tutorialLayerParams: WindowManager.LayoutParams
 
@@ -546,15 +540,6 @@ class OverlayService : Service(),
     }
 
     private fun createTutorialControls() {
-        tutorialLabel = TutorialHudUi.makeControlLabel(this, R.string.tutorial_label)
-        tutorialLabelParams = createHudControlParams(
-            TUTORIAL_CONTROL_WIDTH,
-            CONTROL_LABEL_HEIGHT,
-            TUTORIAL_BUTTON_MARGIN,
-            TUTORIAL_BUTTON_MARGIN,
-            touchable = false
-        )
-
         tutorialToggleBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
                 showTutorialOnLaunch = !showTutorialOnLaunch
@@ -571,19 +556,10 @@ class OverlayService : Service(),
             TUTORIAL_CONTROL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
             TUTORIAL_BUTTON_MARGIN,
-            TUTORIAL_BUTTON_MARGIN + CONTROL_LABEL_HEIGHT + TOP_CONTROL_LABEL_GAP
+            TUTORIAL_BUTTON_MARGIN
         )
 
         val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
-        themeLabel = TutorialHudUi.makeControlLabel(this, R.string.theme_label)
-        themeLabelParams = createHudControlParams(
-            THEME_CONTROL_WIDTH,
-            CONTROL_LABEL_HEIGHT,
-            themeX,
-            TUTORIAL_BUTTON_MARGIN,
-            touchable = false
-        )
-
         themeBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
                 currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
@@ -595,7 +571,7 @@ class OverlayService : Service(),
             THEME_CONTROL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
             themeX,
-            TUTORIAL_BUTTON_MARGIN + CONTROL_LABEL_HEIGHT + TOP_CONTROL_LABEL_GAP
+            TUTORIAL_BUTTON_MARGIN
         )
 
         tutorialLayer = FrameLayout(this).apply {
@@ -719,9 +695,7 @@ class OverlayService : Service(),
         )
 
         addOverlayView(tutorialLayer, tutorialLayerParams)
-        addOverlayView(tutorialLabel, tutorialLabelParams)
         addOverlayView(tutorialToggleBtn, tutorialToggleParams)
-        addOverlayView(themeLabel, themeLabelParams)
         addOverlayView(themeBtn, themeParams)
 
         applyCurrentTheme()
@@ -1040,14 +1014,8 @@ class OverlayService : Service(),
         drawView.visibility = View.GONE
         setMainControlsVisibility(View.GONE)
         hideTutorial()
-        if (::tutorialLabel.isInitialized) {
-            tutorialLabel.visibility = View.GONE
-        }
         if (::tutorialToggleBtn.isInitialized) {
             tutorialToggleBtn.visibility = View.GONE
-        }
-        if (::themeLabel.isInitialized) {
-            themeLabel.visibility = View.GONE
         }
         if (::themeBtn.isInitialized) {
             themeBtn.visibility = View.GONE
@@ -1077,14 +1045,8 @@ class OverlayService : Service(),
         drawView.setGlyphScales(horizontalScale, verticalScale)
         drawView.visibility = View.VISIBLE
         setMainControlsVisibility(View.VISIBLE)
-        if (::tutorialLabel.isInitialized) {
-            tutorialLabel.visibility = View.VISIBLE
-        }
         if (::tutorialToggleBtn.isInitialized) {
             tutorialToggleBtn.visibility = View.VISIBLE
-        }
-        if (::themeLabel.isInitialized) {
-            themeLabel.visibility = View.VISIBLE
         }
         if (::themeBtn.isInitialized) {
             themeBtn.visibility = View.VISIBLE
@@ -1180,13 +1142,7 @@ class OverlayService : Service(),
     private fun updateTutorialToggleButton() {
         if (!::tutorialToggleBtn.isInitialized) return
 
-        tutorialToggleBtn.setText(
-            if (showTutorialOnLaunch) {
-                R.string.tutorial_toggle_on_short
-            } else {
-                R.string.tutorial_toggle_off_short
-            }
-        )
+        tutorialToggleBtn.setText(R.string.tutorial_label)
         TutorialHudUi.styleSwitch(
             tutorialToggleBtn,
             AppThemeConfig.colors(currentColorTheme),
@@ -1197,8 +1153,12 @@ class OverlayService : Service(),
     private fun updateThemeButton() {
         if (!::themeBtn.isInitialized) return
 
-        themeBtn.text = AppThemeConfig.shortLabel(currentColorTheme)
-        TutorialHudUi.styleSelector(themeBtn, AppThemeConfig.colors(currentColorTheme))
+        themeBtn.setText(R.string.theme_label)
+        TutorialHudUi.styleSelector(
+            themeBtn,
+            AppThemeConfig.colors(currentColorTheme),
+            currentColorTheme
+        )
     }
 
     private fun applyCurrentTheme() {
@@ -1227,12 +1187,6 @@ class OverlayService : Service(),
         }
         if (::tutorialNextBtn.isInitialized) {
             TutorialHudUi.styleButton(tutorialNextBtn, colors)
-        }
-        if (::tutorialLabel.isInitialized) {
-            TutorialHudUi.styleLabel(tutorialLabel, colors)
-        }
-        if (::themeLabel.isInitialized) {
-            TutorialHudUi.styleLabel(themeLabel, colors)
         }
         if (::tutorialToggleBtn.isInitialized) {
             updateTutorialToggleButton()
@@ -1494,9 +1448,7 @@ class OverlayService : Service(),
         if (::floatingBtn.isInitialized) removeOverlayView(floatingBtn)
         if (::floatingModeBtn.isInitialized) removeOverlayView(floatingModeBtn)
         if (::floatingCloseBtn.isInitialized) removeOverlayView(floatingCloseBtn)
-        if (::tutorialLabel.isInitialized) removeOverlayView(tutorialLabel)
         if (::tutorialToggleBtn.isInitialized) removeOverlayView(tutorialToggleBtn)
-        if (::themeLabel.isInitialized) removeOverlayView(themeLabel)
         if (::themeBtn.isInitialized) removeOverlayView(themeBtn)
         if (::tutorialLayer.isInitialized) removeOverlayView(tutorialLayer)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)

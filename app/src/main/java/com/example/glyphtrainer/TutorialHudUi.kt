@@ -80,19 +80,35 @@ object TutorialHudUi {
 
     fun styleSwitch(button: TextView, colors: AppThemeColors, enabled: Boolean) {
         button.setTextColor(colors.text)
+        val activeColor = if (enabled) Color.rgb(0, 190, 95) else Color.rgb(185, 42, 42)
         button.background = SwitchHudDrawable(
-            fillColor = colors.buttonBackground,
-            strokeColor = colors.outline,
-            knobColor = if (enabled) colors.accent else Color.argb(210, 140, 150, 160),
+            fillColor = Color.argb(190, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)),
+            strokeColor = Color.argb(230, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)),
+            knobColor = Color.WHITE,
             knobOnRight = enabled
         )
     }
 
-    fun styleSelector(button: TextView, colors: AppThemeColors) {
+    fun styleSelector(button: TextView, colors: AppThemeColors, theme: AppColorTheme) {
         button.setTextColor(colors.text)
+        val selectorColor = when (theme) {
+            AppColorTheme.STANDARD -> Color.rgb(95, 100, 108)
+            AppColorTheme.GREEN -> Color.rgb(0, 170, 95)
+            AppColorTheme.BLUE -> Color.rgb(0, 135, 210)
+        }
         button.background = TechHudDrawable(
-            fillColor = colors.buttonBackground,
-            strokeColor = colors.outline,
+            fillColor = Color.argb(
+                190,
+                Color.red(selectorColor),
+                Color.green(selectorColor),
+                Color.blue(selectorColor)
+            ),
+            strokeColor = Color.argb(
+                230,
+                Color.red(selectorColor),
+                Color.green(selectorColor),
+                Color.blue(selectorColor)
+            ),
             strokeWidth = 3f,
             cornerCut = 26f
         )
