@@ -155,6 +155,7 @@ class DrawView : View {
     private var gestureDistance = 0f
 
     private val MAX_SLOTS = 5
+    private val MAIN_OVERLAY_VERTICAL_OFFSET = 40f
     private val drawArea = RectF()
     private var stableLayoutHeight = 0
 
@@ -167,9 +168,9 @@ class DrawView : View {
 
         drawArea.set(
             margin,
-            layoutHeight*0.30f,
+            layoutHeight*0.30f + MAIN_OVERLAY_VERTICAL_OFFSET,
             w-margin,
-            layoutHeight*0.78f
+            layoutHeight*0.78f + MAIN_OVERLAY_VERTICAL_OFFSET
         )
         val expand = 60f  // tamanho extra do quadrado verde
 
