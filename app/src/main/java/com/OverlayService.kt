@@ -81,7 +81,8 @@ class OverlayService : Service(),
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
         const val TOP_CONTROL_GAP = 24
-        const val TOP_CONTROL_LABEL_GAP = 6
+        const val TOP_CONTROL_LABEL_GAP = 16
+        const val BOTTOM_CONTROLS_EXTRA_OFFSET = 40f
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
@@ -917,7 +918,9 @@ class OverlayService : Service(),
         val screenWidth = drawView.width
         val controlsWidth = buttonSize * 4 + gap * 3
         val controlsStartX = (screenWidth - controlsWidth) / 2
-        val controlsY = fixedControlsY ?: (area.bottom + 110f).toInt().also {
+        val controlsY = fixedControlsY ?: (
+            area.bottom + 110f + BOTTOM_CONTROLS_EXTRA_OFFSET
+        ).toInt().also {
             fixedControlsY = it
         }
 
@@ -1217,7 +1220,7 @@ class OverlayService : Service(),
             tutorialBody.setTextColor(colors.text)
         }
         if (::tutorialCloseBtn.isInitialized) {
-            TutorialHudUi.styleButton(tutorialCloseBtn, colors)
+            TutorialHudUi.styleIconButton(tutorialCloseBtn, colors)
         }
         if (::tutorialBackBtn.isInitialized) {
             TutorialHudUi.styleButton(tutorialBackBtn, colors)

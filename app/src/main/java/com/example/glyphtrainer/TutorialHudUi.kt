@@ -19,7 +19,7 @@ object TutorialHudUi {
     fun makeControlLabel(context: android.content.Context, @StringRes textRes: Int): TextView {
         return TextView(context).apply {
             setText(textRes)
-            textSize = 14f
+            textSize = 12.5f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             includeFontPadding = false
@@ -56,7 +56,7 @@ object TutorialHudUi {
     fun makeIndicatorDot(context: android.content.Context): TextView {
         return TextView(context).apply {
             text = "•"
-            textSize = 34f
+            textSize = 24f
             gravity = Gravity.CENTER
             includeFontPadding = false
         }
@@ -69,12 +69,13 @@ object TutorialHudUi {
 
     fun styleButton(button: TextView, colors: AppThemeColors) {
         button.setTextColor(colors.text)
-        button.background = TechHudDrawable(
-            fillColor = colors.buttonBackground,
-            strokeColor = colors.outline,
-            strokeWidth = 3f,
-            cornerCut = BUTTON_CORNER_CUT
-        )
+        button.background = SoftHudDrawable(fillColor = Color.argb(70, 255, 255, 255))
+    }
+
+    fun styleIconButton(button: TextView, colors: AppThemeColors) {
+        button.setTextColor(Color.argb(230, 245, 250, 255))
+        button.background = null
+        button.setShadowLayer(6f, 0f, 0f, colors.accentSoft)
     }
 
     fun styleSwitch(button: TextView, colors: AppThemeColors, enabled: Boolean) {
@@ -105,7 +106,7 @@ object TutorialHudUi {
         return TechHudDrawable(
             fillColor = colors.panelBackground,
             strokeColor = colors.outline,
-            strokeWidth = 4f,
+            strokeWidth = 2.5f,
             cornerCut = PANEL_CORNER_CUT,
             drawCornerAccents = true
         )
@@ -117,8 +118,8 @@ object TutorialHudUi {
     }
 
     fun styleIndicator(dot: TextView, colors: AppThemeColors, active: Boolean) {
-        dot.setTextColor(if (active) colors.accent else Color.argb(155, 150, 160, 170))
-        dot.setShadowLayer(if (active) 18f else 0f, 0f, 0f, colors.accentSoft)
+        dot.setTextColor(if (active) colors.accent else Color.argb(105, 150, 160, 170))
+        dot.setShadowLayer(if (active) 8f else 0f, 0f, 0f, colors.accentSoft)
     }
 
     private class TechHudDrawable(
@@ -140,8 +141,8 @@ object TutorialHudUi {
         private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             color = strokeColor
-            alpha = 90
-            this.strokeWidth = this@TechHudDrawable.strokeWidth + 5f
+            alpha = 45
+            this.strokeWidth = this@TechHudDrawable.strokeWidth + 2f
         }
         private val path = Path()
 
@@ -181,7 +182,7 @@ object TutorialHudUi {
             val top = bounds.top + strokeWidth + 12f
             val right = bounds.right - strokeWidth - 12f
             val bottom = bounds.bottom - strokeWidth - 12f
-            val accent = 44f
+            val accent = 28f
 
             canvas.drawLine(left, top + accent, left, top, strokePaint)
             canvas.drawLine(left, top, left + accent, top, strokePaint)
@@ -203,6 +204,35 @@ object TutorialHudUi {
             fillPaint.colorFilter = colorFilter
             strokePaint.colorFilter = colorFilter
             glowPaint.colorFilter = colorFilter
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+    }
+
+    private class SoftHudDrawable(
+        private val fillColor: Int
+    ) : Drawable() {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = fillColor
+        }
+
+        override fun draw(canvas: Canvas) {
+            val left = bounds.left.toFloat()
+            val top = bounds.top.toFloat()
+            val right = bounds.right.toFloat()
+            val bottom = bounds.bottom.toFloat()
+            val radius = (bottom - top) / 4f
+            canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint)
+        }
+
+        override fun setAlpha(alpha: Int) {
+            paint.alpha = alpha
+        }
+
+        override fun setColorFilter(colorFilter: ColorFilter?) {
+            paint.colorFilter = colorFilter
         }
 
         @Deprecated("Deprecated in Java")
