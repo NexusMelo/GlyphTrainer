@@ -71,11 +71,11 @@ class OverlayService : Service(),
         const val REPLAY_GLYPH_DURATION_MS = 1_750L
         const val REPLAY_GLYPH_GAP_MS = 0L
         const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
-        const val TUTORIAL_BUTTON_WIDTH = 176
-        const val TUTORIAL_BUTTON_HEIGHT = 56
+        const val TUTORIAL_BUTTON_WIDTH = 208
+        const val TUTORIAL_BUTTON_HEIGHT = 64
         const val TUTORIAL_BUTTON_MARGIN = 24
-        const val TUTORIAL_CARD_WIDTH = 480
-        const val TUTORIAL_CARD_HEIGHT = 220
+        const val TUTORIAL_CARD_WIDTH = 560
+        const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
         const val TUTORIAL_POINTER_SIZE = 44
     }
@@ -96,7 +96,6 @@ class OverlayService : Service(),
     private lateinit var tutorialPointer: TextView
     private lateinit var tutorialCard: LinearLayout
     private lateinit var tutorialCloseBtn: TextView
-    private lateinit var tutorialTitle: TextView
     private lateinit var tutorialBody: TextView
     private lateinit var tutorialBackBtn: TextView
     private lateinit var tutorialNextBtn: TextView
@@ -210,7 +209,6 @@ class OverlayService : Service(),
     private var permissionListenerRegistered = false
 
     private data class TutorialStep(
-        val titleRes: Int,
         val bodyRes: Int,
         val target: TutorialTarget
     )
@@ -228,42 +226,34 @@ class OverlayService : Service(),
 
     private val tutorialSteps = listOf(
         TutorialStep(
-            R.string.tutorial_step_1_title,
             R.string.tutorial_step_1_body,
             TutorialTarget.CAPTURE_AREA
         ),
         TutorialStep(
-            R.string.tutorial_step_2_title,
             R.string.tutorial_step_2_body,
             TutorialTarget.MODE_BUTTON
         ),
         TutorialStep(
-            R.string.tutorial_step_3_title,
             R.string.tutorial_step_3_body,
             TutorialTarget.START_BUTTON
         ),
         TutorialStep(
-            R.string.tutorial_step_4_title,
             R.string.tutorial_step_4_body,
             TutorialTarget.RESET_BUTTON
         ),
         TutorialStep(
-            R.string.tutorial_step_5_title,
             R.string.tutorial_step_5_body,
             TutorialTarget.CLOSE_BUTTON
         ),
         TutorialStep(
-            R.string.tutorial_step_6_title,
             R.string.tutorial_step_6_body,
             TutorialTarget.GO_MESSAGE
         ),
         TutorialStep(
-            R.string.tutorial_step_7_title,
             R.string.tutorial_step_7_body,
             TutorialTarget.FLOATING_BUTTON
         ),
         TutorialStep(
-            R.string.tutorial_step_8_title,
             R.string.tutorial_step_8_body,
             TutorialTarget.FLOATING_MODE
         )
@@ -539,7 +529,7 @@ class OverlayService : Service(),
 
     private fun createTutorialControls() {
         tutorialToggleBtn = TextView(this).apply {
-            textSize = 13f
+            textSize = 15f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             includeFontPadding = false
@@ -573,8 +563,6 @@ class OverlayService : Service(),
             y = TUTORIAL_BUTTON_MARGIN
         }
 
-        addOverlayView(tutorialToggleBtn, tutorialToggleParams)
-
         tutorialLayer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(80, 0, 0, 0))
             visibility = View.GONE
@@ -602,7 +590,7 @@ class OverlayService : Service(),
 
         tutorialCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 18, 24, 18)
+            setPadding(28, 22, 28, 24)
             background = GradientDrawable().apply {
                 cornerRadius = 24f
                 setColor(Color.argb(220, 15, 15, 15))
@@ -612,25 +600,15 @@ class OverlayService : Service(),
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
         }
 
-        tutorialTitle = TextView(this).apply {
-            textSize = 19f
-            setTextColor(Color.WHITE)
-            includeFontPadding = false
-        }
-        header.addView(
-            tutorialTitle,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-
-        tutorialCloseBtn = makeTutorialButton(R.string.tutorial_close, 26f).apply {
+        tutorialCloseBtn = makeTutorialButton(R.string.tutorial_close, 30f).apply {
             setOnClickListener { hideTutorial() }
         }
         header.addView(
             tutorialCloseBtn,
-            LinearLayout.LayoutParams(56, 48)
+            LinearLayout.LayoutParams(68, 60)
         )
         tutorialCard.addView(
             header,
@@ -641,9 +619,12 @@ class OverlayService : Service(),
         )
 
         tutorialBody = TextView(this).apply {
-            textSize = 16f
+            textSize = 22f
             setTextColor(Color.WHITE)
-            setPadding(0, 18, 0, 16)
+            gravity = Gravity.CENTER
+            includeFontPadding = true
+            setLineSpacing(4f, 1.0f)
+            setPadding(0, 16, 0, 18)
         }
         tutorialCard.addView(
             tutorialBody,
@@ -659,23 +640,23 @@ class OverlayService : Service(),
             gravity = Gravity.CENTER
         }
 
-        tutorialBackBtn = makeTutorialButton(R.string.tutorial_back, 28f).apply {
+        tutorialBackBtn = makeTutorialButton(R.string.tutorial_back, 36f).apply {
             setOnClickListener {
                 if (tutorialStepIndex > 0) {
                     showTutorial(tutorialStepIndex - 1)
                 }
             }
         }
-        nav.addView(tutorialBackBtn, LinearLayout.LayoutParams(96, 52))
+        nav.addView(tutorialBackBtn, LinearLayout.LayoutParams(128, 72))
 
-        tutorialNextBtn = makeTutorialButton(R.string.tutorial_next, 28f).apply {
+        tutorialNextBtn = makeTutorialButton(R.string.tutorial_next, 36f).apply {
             setOnClickListener {
                 if (tutorialStepIndex < tutorialSteps.lastIndex) {
                     showTutorial(tutorialStepIndex + 1)
                 }
             }
         }
-        nav.addView(tutorialNextBtn, LinearLayout.LayoutParams(96, 52))
+        nav.addView(tutorialNextBtn, LinearLayout.LayoutParams(128, 72))
 
         tutorialCard.addView(
             nav,
@@ -691,6 +672,7 @@ class OverlayService : Service(),
         )
 
         addOverlayView(tutorialLayer, tutorialLayerParams)
+        addOverlayView(tutorialToggleBtn, tutorialToggleParams)
     }
 
     private fun makeTutorialButton(@StringRes textRes: Int, textSize: Float): TextView {
@@ -702,7 +684,8 @@ class OverlayService : Service(),
             includeFontPadding = false
             background = GradientDrawable().apply {
                 cornerRadius = 18f
-                setColor(Color.argb(120, 40, 40, 40))
+                setColor(Color.argb(180, 55, 55, 55))
+                setStroke(2, Color.argb(220, 255, 255, 255))
             }
         }
     }
@@ -1127,7 +1110,6 @@ class OverlayService : Service(),
         tutorialStepIndex = stepIndex.coerceIn(0, tutorialSteps.lastIndex)
         val step = tutorialSteps[tutorialStepIndex]
 
-        tutorialTitle.setText(step.titleRes)
         tutorialBody.setText(step.bodyRes)
         tutorialBackBtn.visibility = if (tutorialStepIndex == 0) View.INVISIBLE else View.VISIBLE
         tutorialNextBtn.visibility =
