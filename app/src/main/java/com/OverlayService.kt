@@ -297,6 +297,9 @@ class OverlayService : Service(),
         createFloatingControls()
         if (creationFailed) return
 
+        createThemeControl()
+        if (creationFailed) return
+
         if (TUTORIAL_ENABLED) {
             createTutorialControls()
             if (creationFailed) return
@@ -562,21 +565,6 @@ class OverlayService : Service(),
             TUTORIAL_BUTTON_MARGIN
         )
 
-        val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
-        themeBtn = TutorialHudUi.makeControlButton(this).apply {
-            setOnClickListener {
-                currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
-                saveColorTheme()
-                applyCurrentTheme()
-            }
-        }
-        themeParams = createHudControlParams(
-            THEME_CONTROL_WIDTH,
-            TUTORIAL_BUTTON_HEIGHT,
-            themeX,
-            TUTORIAL_BUTTON_MARGIN
-        )
-
         tutorialLayer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(80, 0, 0, 0))
             visibility = View.GONE
@@ -699,6 +687,25 @@ class OverlayService : Service(),
 
         addOverlayView(tutorialLayer, tutorialLayerParams)
         addOverlayView(tutorialToggleBtn, tutorialToggleParams)
+
+        applyCurrentTheme()
+    }
+
+    private fun createThemeControl() {
+        val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
+        themeBtn = TutorialHudUi.makeControlButton(this).apply {
+            setOnClickListener {
+                currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
+                saveColorTheme()
+                applyCurrentTheme()
+            }
+        }
+        themeParams = createHudControlParams(
+            THEME_CONTROL_WIDTH,
+            TUTORIAL_BUTTON_HEIGHT,
+            themeX,
+            TUTORIAL_BUTTON_MARGIN
+        )
         addOverlayView(themeBtn, themeParams)
 
         applyCurrentTheme()
