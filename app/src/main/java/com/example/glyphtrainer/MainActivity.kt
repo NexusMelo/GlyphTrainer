@@ -245,7 +245,7 @@ class DrawView : View {
     private val slotBorderPaint = Paint().apply {
         color = AppThemeConfig.colors(AppThemeConfig.DEFAULT_THEME).accent
         style = Paint.Style.STROKE
-        strokeWidth = 4f
+        strokeWidth = 5.2f
         isAntiAlias = true
     }
     private val paintCore = Paint().apply {
