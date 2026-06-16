@@ -155,7 +155,9 @@ class DrawView : View {
     private var gestureDistance = 0f
 
     private val MAX_SLOTS = 5
-    private val MAIN_OVERLAY_VERTICAL_OFFSET = 40f
+    private val MAIN_OVERLAY_VERTICAL_OFFSET = 100f
+    private val GLYPH_BOX_VERTICAL_OFFSET = 60f
+    private val STATIC_OVERLAY_COMPENSATION = 60f
     private val drawArea = RectF()
     private var stableLayoutHeight = 0
 
@@ -300,7 +302,7 @@ class DrawView : View {
         for (slot in 0 until maxTouches) {
 
             val x = startX + slot * spacing
-            val y = 120f
+            val y = 120f + GLYPH_BOX_VERTICAL_OFFSET
             val boxY = y + glyphSize * 0.55f
 
             // desenhar contorno exatamente na mesma zona do desenho
@@ -332,14 +334,14 @@ class DrawView : View {
         canvas.drawText(
             "$touchCount / $maxTouches",
             drawArea.centerX()-40f,
-            drawArea.bottom+90f,
+            drawArea.bottom+90f-STATIC_OVERLAY_COMPENSATION,
             textPaint
         )
         if (goVisible) {
             canvas.drawText(
                 "GO",
                 drawArea.centerX(),
-                drawArea.centerY(),
+                drawArea.centerY()-STATIC_OVERLAY_COMPENSATION,
                 goPaint
             )
         }

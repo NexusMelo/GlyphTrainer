@@ -54,6 +54,7 @@ class OverlayService : Service(),
         const val PREF_PREMIUM_ENABLED = "premium_enabled"
         const val PREF_AUTO_CAPTURE_USES = "auto_capture_uses"
         const val PREF_FLOATING_DRAG_USES = "floating_drag_uses"
+        const val TUTORIAL_ENABLED = false
         const val DEFAULT_GLYPH_LIMIT = 5
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
@@ -296,8 +297,10 @@ class OverlayService : Service(),
         createFloatingControls()
         if (creationFailed) return
 
-        createTutorialControls()
-        if (creationFailed) return
+        if (TUTORIAL_ENABLED) {
+            createTutorialControls()
+            if (creationFailed) return
+        }
 
         disableCapture()
         updateStartButton(false)
@@ -306,7 +309,7 @@ class OverlayService : Service(),
         updateTutorialToggleButton()
         registerOverlayPermissionListener()
 
-        if (firstLaunchTutorialPending || showTutorialOnLaunch) {
+        if (TUTORIAL_ENABLED && (firstLaunchTutorialPending || showTutorialOnLaunch)) {
             mainHandler.postDelayed({ showTutorial() }, 250L)
         }
     }
