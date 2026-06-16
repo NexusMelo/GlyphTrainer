@@ -59,7 +59,7 @@ class OverlayService : Service(),
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 2_000L
         const val REPLAY_START_DELAY_MS = 1_000L
-        const val REPLAY_GLYPH_DURATION_MS = 2_000L
+        const val REPLAY_GLYPH_DURATION_MS = 1_750L
         const val REPLAY_GLYPH_GAP_MS = 0L
         const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
     }
@@ -389,7 +389,7 @@ class OverlayService : Service(),
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
-        shiftButtonSymbol(floatingCloseBtn, R.string.overlay_close, -4)
+        shiftButtonSymbol(floatingCloseBtn, R.string.overlay_close, -12)
 
         floatingCloseParams = WindowManager.LayoutParams(
             FLOATING_CLOSE_SIZE,
