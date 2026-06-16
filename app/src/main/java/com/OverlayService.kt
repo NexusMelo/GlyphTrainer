@@ -389,7 +389,7 @@ class OverlayService : Service(),
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
-        shiftButtonSymbol(floatingCloseBtn, R.string.overlay_close, -12)
+        shiftButtonSymbol(floatingCloseBtn, R.string.overlay_close, -18)
 
         floatingCloseParams = WindowManager.LayoutParams(
             FLOATING_CLOSE_SIZE,
