@@ -692,7 +692,6 @@ class OverlayService : Service(),
     }
 
     private fun createThemeControl() {
-        val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
         themeBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
                 currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
@@ -700,15 +699,20 @@ class OverlayService : Service(),
                 applyCurrentTheme()
             }
         }
-        themeParams = createHudControlParams(
+        themeParams = createThemeControlParams()
+        addOverlayView(themeBtn, themeParams)
+
+        applyCurrentTheme()
+    }
+
+    private fun createThemeControlParams(): WindowManager.LayoutParams {
+        val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
+        return createHudControlParams(
             THEME_CONTROL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
             themeX,
             TUTORIAL_BUTTON_MARGIN
         )
-        addOverlayView(themeBtn, themeParams)
-
-        applyCurrentTheme()
     }
 
     private fun createHudControlParams(
