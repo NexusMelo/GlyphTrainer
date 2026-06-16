@@ -77,11 +77,11 @@ class OverlayService : Service(),
         const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
         const val TUTORIAL_BUTTON_HEIGHT = 64
         const val TUTORIAL_BUTTON_MARGIN = 24
-        const val TUTORIAL_LABEL_WIDTH = 132
-        const val TUTORIAL_TOGGLE_WIDTH = 96
-        const val THEME_BUTTON_WIDTH = 132
-        const val THEME_CONTROL_GAP = 12
-        const val THEME_CONTROL_ROW_GAP = 10
+        const val CONTROL_LABEL_HEIGHT = 34
+        const val TUTORIAL_CONTROL_WIDTH = 160
+        const val THEME_CONTROL_WIDTH = 188
+        const val TOP_CONTROL_GAP = 24
+        const val TOP_CONTROL_LABEL_GAP = 6
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
@@ -547,8 +547,8 @@ class OverlayService : Service(),
     private fun createTutorialControls() {
         tutorialLabel = TutorialHudUi.makeControlLabel(this, R.string.tutorial_label)
         tutorialLabelParams = createHudControlParams(
-            TUTORIAL_LABEL_WIDTH,
-            TUTORIAL_BUTTON_HEIGHT,
+            TUTORIAL_CONTROL_WIDTH,
+            CONTROL_LABEL_HEIGHT,
             TUTORIAL_BUTTON_MARGIN,
             TUTORIAL_BUTTON_MARGIN,
             touchable = false
@@ -567,19 +567,19 @@ class OverlayService : Service(),
             }
         }
         tutorialToggleParams = createHudControlParams(
-            TUTORIAL_TOGGLE_WIDTH,
-            TUTORIAL_BUTTON_HEIGHT,
-            TUTORIAL_BUTTON_MARGIN + TUTORIAL_LABEL_WIDTH + THEME_CONTROL_GAP,
-            TUTORIAL_BUTTON_MARGIN
-        )
-
-        val secondRowY = TUTORIAL_BUTTON_MARGIN + TUTORIAL_BUTTON_HEIGHT + THEME_CONTROL_ROW_GAP
-        themeLabel = TutorialHudUi.makeControlLabel(this, R.string.theme_label)
-        themeLabelParams = createHudControlParams(
-            TUTORIAL_LABEL_WIDTH,
+            TUTORIAL_CONTROL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
             TUTORIAL_BUTTON_MARGIN,
-            secondRowY,
+            TUTORIAL_BUTTON_MARGIN + CONTROL_LABEL_HEIGHT + TOP_CONTROL_LABEL_GAP
+        )
+
+        val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
+        themeLabel = TutorialHudUi.makeControlLabel(this, R.string.theme_label)
+        themeLabelParams = createHudControlParams(
+            THEME_CONTROL_WIDTH,
+            CONTROL_LABEL_HEIGHT,
+            themeX,
+            TUTORIAL_BUTTON_MARGIN,
             touchable = false
         )
 
@@ -591,10 +591,10 @@ class OverlayService : Service(),
             }
         }
         themeParams = createHudControlParams(
-            THEME_BUTTON_WIDTH,
+            THEME_CONTROL_WIDTH,
             TUTORIAL_BUTTON_HEIGHT,
-            TUTORIAL_BUTTON_MARGIN + TUTORIAL_LABEL_WIDTH + THEME_CONTROL_GAP,
-            secondRowY
+            themeX,
+            TUTORIAL_BUTTON_MARGIN + CONTROL_LABEL_HEIGHT + TOP_CONTROL_LABEL_GAP
         )
 
         tutorialLayer = FrameLayout(this).apply {
@@ -1184,12 +1184,18 @@ class OverlayService : Service(),
                 R.string.tutorial_toggle_off_short
             }
         )
+        TutorialHudUi.styleSwitch(
+            tutorialToggleBtn,
+            AppThemeConfig.colors(currentColorTheme),
+            showTutorialOnLaunch
+        )
     }
 
     private fun updateThemeButton() {
         if (!::themeBtn.isInitialized) return
 
         themeBtn.text = AppThemeConfig.shortLabel(currentColorTheme)
+        TutorialHudUi.styleSelector(themeBtn, AppThemeConfig.colors(currentColorTheme))
     }
 
     private fun applyCurrentTheme() {
@@ -1226,11 +1232,9 @@ class OverlayService : Service(),
             TutorialHudUi.styleLabel(themeLabel, colors)
         }
         if (::tutorialToggleBtn.isInitialized) {
-            TutorialHudUi.styleButton(tutorialToggleBtn, colors)
             updateTutorialToggleButton()
         }
         if (::themeBtn.isInitialized) {
-            TutorialHudUi.styleButton(themeBtn, colors)
             updateThemeButton()
         }
         updateTutorialIndicators(colors)

@@ -64,12 +64,7 @@ object TutorialHudUi {
 
     fun styleLabel(label: TextView, colors: AppThemeColors) {
         label.setTextColor(colors.text)
-        label.background = TechHudDrawable(
-            fillColor = Color.argb(95, 0, 0, 0),
-            strokeColor = colors.accentSoft,
-            strokeWidth = 1.5f,
-            cornerCut = BUTTON_CORNER_CUT
-        )
+        label.background = null
     }
 
     fun styleButton(button: TextView, colors: AppThemeColors) {
@@ -79,6 +74,26 @@ object TutorialHudUi {
             strokeColor = colors.outline,
             strokeWidth = 3f,
             cornerCut = BUTTON_CORNER_CUT
+        )
+    }
+
+    fun styleSwitch(button: TextView, colors: AppThemeColors, enabled: Boolean) {
+        button.setTextColor(colors.text)
+        button.background = SwitchHudDrawable(
+            fillColor = colors.buttonBackground,
+            strokeColor = colors.outline,
+            knobColor = if (enabled) colors.accent else Color.argb(210, 140, 150, 160),
+            knobOnRight = enabled
+        )
+    }
+
+    fun styleSelector(button: TextView, colors: AppThemeColors) {
+        button.setTextColor(colors.text)
+        button.background = TechHudDrawable(
+            fillColor = colors.buttonBackground,
+            strokeColor = colors.outline,
+            strokeWidth = 3f,
+            cornerCut = 26f
         )
     }
 
@@ -188,6 +203,71 @@ object TutorialHudUi {
             fillPaint.colorFilter = colorFilter
             strokePaint.colorFilter = colorFilter
             glowPaint.colorFilter = colorFilter
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+    }
+
+    private class SwitchHudDrawable(
+        private val fillColor: Int,
+        private val strokeColor: Int,
+        private val knobColor: Int,
+        private val knobOnRight: Boolean
+    ) : Drawable() {
+        private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = fillColor
+        }
+        private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = strokeColor
+            strokeWidth = 3f
+        }
+        private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = strokeColor
+            alpha = 85
+            strokeWidth = 8f
+        }
+        private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = knobColor
+        }
+
+        override fun draw(canvas: Canvas) {
+            val left = bounds.left + 3f
+            val top = bounds.top + 3f
+            val right = bounds.right - 3f
+            val bottom = bounds.bottom - 3f
+            val radius = (bottom - top) / 2f
+
+            canvas.drawRoundRect(left, top, right, bottom, radius, radius, fillPaint)
+            canvas.drawRoundRect(left, top, right, bottom, radius, radius, glowPaint)
+            canvas.drawRoundRect(left, top, right, bottom, radius, radius, strokePaint)
+
+            val knobRadius = radius * 0.58f
+            val knobX = if (knobOnRight) {
+                right - radius
+            } else {
+                left + radius
+            }
+            val knobY = (top + bottom) / 2f
+            canvas.drawCircle(knobX, knobY, knobRadius, knobPaint)
+        }
+
+        override fun setAlpha(alpha: Int) {
+            fillPaint.alpha = alpha
+            strokePaint.alpha = alpha
+            glowPaint.alpha = (alpha * 0.35f).toInt()
+            knobPaint.alpha = alpha
+        }
+
+        override fun setColorFilter(colorFilter: ColorFilter?) {
+            fillPaint.colorFilter = colorFilter
+            strokePaint.colorFilter = colorFilter
+            glowPaint.colorFilter = colorFilter
+            knobPaint.colorFilter = colorFilter
         }
 
         @Deprecated("Deprecated in Java")
