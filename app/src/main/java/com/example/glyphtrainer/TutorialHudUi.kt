@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.TextView
 import androidx.annotation.StringRes
@@ -81,12 +82,7 @@ object TutorialHudUi {
     fun styleSwitch(button: TextView, colors: AppThemeColors, enabled: Boolean) {
         button.setTextColor(colors.text)
         val activeColor = if (enabled) Color.rgb(0, 190, 95) else Color.rgb(185, 42, 42)
-        button.background = SwitchHudDrawable(
-            fillColor = Color.argb(190, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)),
-            strokeColor = Color.argb(230, Color.red(activeColor), Color.green(activeColor), Color.blue(activeColor)),
-            knobColor = Color.WHITE,
-            knobOnRight = enabled
-        )
+        button.background = pillBackground(activeColor)
     }
 
     fun styleSelector(button: TextView, colors: AppThemeColors, theme: AppColorTheme) {
@@ -96,22 +92,18 @@ object TutorialHudUi {
             AppColorTheme.GREEN -> Color.rgb(0, 170, 95)
             AppColorTheme.BLUE -> Color.rgb(0, 135, 210)
         }
-        button.background = TechHudDrawable(
-            fillColor = Color.argb(
-                190,
-                Color.red(selectorColor),
-                Color.green(selectorColor),
-                Color.blue(selectorColor)
-            ),
-            strokeColor = Color.argb(
-                230,
-                Color.red(selectorColor),
-                Color.green(selectorColor),
-                Color.blue(selectorColor)
-            ),
-            strokeWidth = 3f,
-            cornerCut = 26f
-        )
+        button.background = pillBackground(selectorColor)
+    }
+
+    private fun pillBackground(baseColor: Int): Drawable {
+        return GradientDrawable().apply {
+            cornerRadius = 32f
+            setColor(Color.argb(205, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)))
+            setStroke(
+                3,
+                Color.argb(235, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
+            )
+        }
     }
 
     fun stylePanel(panel: TextView, colors: AppThemeColors) {
@@ -255,68 +247,4 @@ object TutorialHudUi {
         override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
     }
 
-    private class SwitchHudDrawable(
-        private val fillColor: Int,
-        private val strokeColor: Int,
-        private val knobColor: Int,
-        private val knobOnRight: Boolean
-    ) : Drawable() {
-        private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = fillColor
-        }
-        private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = strokeColor
-            strokeWidth = 3f
-        }
-        private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = strokeColor
-            alpha = 85
-            strokeWidth = 8f
-        }
-        private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = knobColor
-        }
-
-        override fun draw(canvas: Canvas) {
-            val left = bounds.left + 3f
-            val top = bounds.top + 3f
-            val right = bounds.right - 3f
-            val bottom = bounds.bottom - 3f
-            val radius = (bottom - top) / 2f
-
-            canvas.drawRoundRect(left, top, right, bottom, radius, radius, fillPaint)
-            canvas.drawRoundRect(left, top, right, bottom, radius, radius, glowPaint)
-            canvas.drawRoundRect(left, top, right, bottom, radius, radius, strokePaint)
-
-            val knobRadius = radius * 0.58f
-            val knobX = if (knobOnRight) {
-                right - radius
-            } else {
-                left + radius
-            }
-            val knobY = (top + bottom) / 2f
-            canvas.drawCircle(knobX, knobY, knobRadius, knobPaint)
-        }
-
-        override fun setAlpha(alpha: Int) {
-            fillPaint.alpha = alpha
-            strokePaint.alpha = alpha
-            glowPaint.alpha = (alpha * 0.35f).toInt()
-            knobPaint.alpha = alpha
-        }
-
-        override fun setColorFilter(colorFilter: ColorFilter?) {
-            fillPaint.colorFilter = colorFilter
-            strokePaint.colorFilter = colorFilter
-            glowPaint.colorFilter = colorFilter
-            knobPaint.colorFilter = colorFilter
-        }
-
-        @Deprecated("Deprecated in Java")
-        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
-    }
 }
