@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.TextView
 import androidx.annotation.StringRes
+import androidx.core.widget.TextViewCompat
 
 object TutorialHudUi {
     private const val PANEL_CORNER_CUT = 30f
@@ -36,6 +37,14 @@ object TutorialHudUi {
             includeFontPadding = false
             letterSpacing = 0.08f
             elevation = 8f
+            setPadding(dp(12), 0, dp(12), 0)
+            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                this,
+                10,
+                15,
+                1,
+                android.util.TypedValue.COMPLEX_UNIT_SP
+            )
         }
     }
 
@@ -104,6 +113,10 @@ object TutorialHudUi {
                 Color.argb(235, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
             )
         }
+    }
+
+    private fun TextView.dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
     }
 
     fun stylePanel(panel: TextView, colors: AppThemeColors) {
