@@ -383,7 +383,7 @@ class OverlayService : Service(),
             }
         }
 
-        modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN, 30f){
+        modeBtn = makeIconButton(glyphLimitIcon(), Color.CYAN){
             cancelSequencePresentation()
             disableCapture()
 
@@ -1139,40 +1139,34 @@ class OverlayService : Service(),
     }
 
     private fun updateModeButton(){
-        modeBtn.setText(
-            when (glyphLimit) {
-                3 -> R.string.overlay_glyph_limit_3
-                4 -> R.string.overlay_glyph_limit_4
-                else -> R.string.overlay_glyph_limit
-            }
-        )
         modeBtn.setTextColor(Color.CYAN)
+        modeBtn.setVectorIcon(glyphLimitIcon(), Color.CYAN)
         updateFloatingButton()
     }
 
     private fun updateFloatingButton() {
         if (!::floatingBtn.isInitialized) return
 
-        floatingBtn.setText(
-            when (glyphLimit) {
-                3 -> R.string.overlay_glyph_limit_3
-                4 -> R.string.overlay_glyph_limit_4
-                else -> R.string.overlay_glyph_limit
-            }
-        )
+        floatingBtn.setVectorIcon(glyphLimitIcon(), Color.WHITE)
     }
 
     private fun updateFloatingModeButton() {
         if (!::floatingModeBtn.isInitialized) return
 
-        floatingModeBtn.setText(
-            if (autoCaptureEnabled) {
-                R.string.overlay_mode_auto
-            } else {
-                R.string.overlay_mode_manual
-            }
+        floatingModeBtn.setVectorIcon(
+            if (autoCaptureEnabled) R.drawable.ic_auto else R.drawable.ic_manual,
+            Color.WHITE
         )
         styleFloatingModePill(floatingModeBtn, autoCaptureEnabled)
+    }
+
+    @DrawableRes
+    private fun glyphLimitIcon(): Int {
+        return when (glyphLimit) {
+            3 -> R.drawable.ic_digit_3
+            4 -> R.drawable.ic_digit_4
+            else -> R.drawable.ic_digit_5
+        }
     }
 
     private fun styleFloatingModePill(button: TextView, active: Boolean) {
@@ -1206,12 +1200,12 @@ class OverlayService : Service(),
     private fun updateThemeButton() {
         if (!::themeBtn.isInitialized) return
 
-        themeBtn.setText(R.string.theme_label)
         TutorialHudUi.styleSelector(
             themeBtn,
             AppThemeConfig.colors(currentColorTheme),
             currentColorTheme
         )
+        themeBtn.setVectorIcon(R.drawable.ic_theme, AppThemeConfig.colors(currentColorTheme).text)
     }
 
     private fun applyCurrentTheme() {
