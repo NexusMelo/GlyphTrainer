@@ -60,10 +60,14 @@ class OverlayService : Service(),
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
         const val FLOATING_BUTTON_SIZE = 132
+        const val FLOATING_CONTENT_BUTTON_SIZE = 64
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
         const val FLOATING_MODE_WIDTH = 176
         const val FLOATING_MODE_HEIGHT = 64
+        const val FLOATING_MODE_MANUAL_WIDTH = 116
+        const val FLOATING_MODE_AUTO_WIDTH = 82
+        const val FLOATING_MODE_CONTENT_HEIGHT = 40
         const val FLOATING_MODE_GAP = 16
         const val FLOATING_CLOSE_SIZE = 48
         const val FLOATING_CLOSE_OVERLAP = FLOATING_CLOSE_SIZE / 2
@@ -79,6 +83,8 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
+        const val THEME_CONTENT_WIDTH = 108
+        const val THEME_CONTENT_HEIGHT = 40
         const val TOP_CONTROL_GAP = 24
         const val BOTTOM_CONTROLS_EXTRA_OFFSET = 100f
         const val TUTORIAL_CARD_WIDTH = 560
@@ -446,16 +452,16 @@ class OverlayService : Service(),
         }
 
         floatingParams = WindowManager.LayoutParams(
-            FLOATING_BUTTON_SIZE,
-            FLOATING_BUTTON_SIZE,
+            FLOATING_CONTENT_BUTTON_SIZE,
+            FLOATING_CONTENT_BUTTON_SIZE,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
-            y = floatingGroupY
+            x = floatingButtonX()
+            y = floatingButtonY()
         }
 
         addOverlayView(floatingBtn, floatingParams)
@@ -501,16 +507,16 @@ class OverlayService : Service(),
         }
 
         floatingModeParams = WindowManager.LayoutParams(
-            FLOATING_MODE_WIDTH,
-            FLOATING_MODE_HEIGHT,
+            floatingModeWidth(),
+            FLOATING_MODE_CONTENT_HEIGHT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = floatingGroupX
-            y = floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP
+            x = floatingModeX()
+            y = floatingModeY()
         }
 
         addOverlayView(floatingModeBtn, floatingModeParams)
@@ -543,6 +549,27 @@ class OverlayService : Service(),
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         includeFontPadding = false
+    }
+
+    private fun floatingButtonX(): Int {
+        return floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_CONTENT_BUTTON_SIZE) / 2
+    }
+
+    private fun floatingButtonY(): Int {
+        return floatingGroupY + (FLOATING_BUTTON_SIZE - FLOATING_CONTENT_BUTTON_SIZE) / 2
+    }
+
+    private fun floatingModeWidth(): Int {
+        return if (autoCaptureEnabled) FLOATING_MODE_AUTO_WIDTH else FLOATING_MODE_MANUAL_WIDTH
+    }
+
+    private fun floatingModeX(): Int {
+        return floatingGroupX + (FLOATING_MODE_WIDTH - floatingModeWidth()) / 2
+    }
+
+    private fun floatingModeY(): Int {
+        return floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP +
+                (FLOATING_MODE_HEIGHT - FLOATING_MODE_CONTENT_HEIGHT) / 2
     }
 
     private fun createTutorialControls() {
@@ -706,12 +733,14 @@ class OverlayService : Service(),
     }
 
     private fun createThemeControlParams(): WindowManager.LayoutParams {
-        val themeX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
+        val themeBaseX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
+        val themeX = themeBaseX + (THEME_CONTROL_WIDTH - THEME_CONTENT_WIDTH) / 2
+        val themeY = TUTORIAL_BUTTON_MARGIN + (TUTORIAL_BUTTON_HEIGHT - THEME_CONTENT_HEIGHT) / 2
         return createHudControlParams(
-            THEME_CONTROL_WIDTH,
-            TUTORIAL_BUTTON_HEIGHT,
+            THEME_CONTENT_WIDTH,
+            THEME_CONTENT_HEIGHT,
             themeX,
-            TUTORIAL_BUTTON_MARGIN
+            themeY
         )
     }
 
@@ -808,9 +837,8 @@ class OverlayService : Service(),
         floatingGroupY = requestedY.coerceIn(minY, maxY)
 
         if (::floatingParams.isInitialized) {
-            floatingParams.x =
-                floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_BUTTON_SIZE) / 2
-            floatingParams.y = floatingGroupY
+            floatingParams.x = floatingButtonX()
+            floatingParams.y = floatingButtonY()
             updateOverlayView(floatingBtn, floatingParams)
         }
         if (::floatingCloseParams.isInitialized) {
@@ -819,9 +847,10 @@ class OverlayService : Service(),
             updateOverlayView(floatingCloseBtn, floatingCloseParams)
         }
         if (::floatingModeParams.isInitialized) {
-            floatingModeParams.x = floatingGroupX
-            floatingModeParams.y =
-                floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP
+            floatingModeParams.width = floatingModeWidth()
+            floatingModeParams.height = FLOATING_MODE_CONTENT_HEIGHT
+            floatingModeParams.x = floatingModeX()
+            floatingModeParams.y = floatingModeY()
             updateOverlayView(floatingModeBtn, floatingModeParams)
         }
     }
@@ -1167,19 +1196,26 @@ class OverlayService : Service(),
         floatingBtn.setVectorIconInBounds(
             iconRes = glyphLimitIcon(),
             tintColor = Color.WHITE,
-            widthDp = 76,
-            heightDp = 76
+            widthDp = 36,
+            heightDp = 36
         )
     }
 
     private fun updateFloatingModeButton() {
         if (!::floatingModeBtn.isInitialized) return
 
+        if (::floatingModeParams.isInitialized) {
+            floatingModeParams.width = floatingModeWidth()
+            floatingModeParams.height = FLOATING_MODE_CONTENT_HEIGHT
+            floatingModeParams.x = floatingModeX()
+            floatingModeParams.y = floatingModeY()
+            updateOverlayView(floatingModeBtn, floatingModeParams)
+        }
         floatingModeBtn.setVectorIconInBounds(
             iconRes = if (autoCaptureEnabled) R.drawable.ic_auto else R.drawable.ic_manual,
             tintColor = Color.WHITE,
-            widthDp = 116,
-            heightDp = 32
+            widthDp = if (autoCaptureEnabled) 56 else 84,
+            heightDp = 20
         )
         styleFloatingModePill(floatingModeBtn, autoCaptureEnabled)
     }
@@ -1232,8 +1268,8 @@ class OverlayService : Service(),
         themeBtn.setVectorIconInBounds(
             iconRes = R.drawable.ic_theme,
             tintColor = AppThemeConfig.colors(currentColorTheme).text,
-            widthDp = 122,
-            heightDp = 32
+            widthDp = 68,
+            heightDp = 20
         )
     }
 
