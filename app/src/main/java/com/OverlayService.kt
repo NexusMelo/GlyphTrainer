@@ -922,6 +922,23 @@ class OverlayService : Service(),
         setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null)
     }
 
+    private fun TextView.setVectorIconInBounds(
+        @DrawableRes iconRes: Int,
+        tintColor: Int,
+        widthDp: Int,
+        heightDp: Int
+    ) {
+        text = null
+        val icon = ContextCompat.getDrawable(this@OverlayService, iconRes)?.mutate() ?: return
+        icon.setTint(tintColor)
+        icon.setBounds(0, 0, dp(widthDp), dp(heightDp))
+        setCompoundDrawables(null, icon, null, null)
+    }
+
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
+    }
+
     // =====================================================
     // POSITIONING
     // =====================================================
@@ -1147,15 +1164,22 @@ class OverlayService : Service(),
     private fun updateFloatingButton() {
         if (!::floatingBtn.isInitialized) return
 
-        floatingBtn.setVectorIcon(glyphLimitIcon(), Color.WHITE)
+        floatingBtn.setVectorIconInBounds(
+            iconRes = glyphLimitIcon(),
+            tintColor = Color.WHITE,
+            widthDp = 76,
+            heightDp = 76
+        )
     }
 
     private fun updateFloatingModeButton() {
         if (!::floatingModeBtn.isInitialized) return
 
-        floatingModeBtn.setVectorIcon(
-            if (autoCaptureEnabled) R.drawable.ic_auto else R.drawable.ic_manual,
-            Color.WHITE
+        floatingModeBtn.setVectorIconInBounds(
+            iconRes = if (autoCaptureEnabled) R.drawable.ic_auto else R.drawable.ic_manual,
+            tintColor = Color.WHITE,
+            widthDp = 116,
+            heightDp = 32
         )
         styleFloatingModePill(floatingModeBtn, autoCaptureEnabled)
     }
@@ -1205,7 +1229,12 @@ class OverlayService : Service(),
             AppThemeConfig.colors(currentColorTheme),
             currentColorTheme
         )
-        themeBtn.setVectorIcon(R.drawable.ic_theme, AppThemeConfig.colors(currentColorTheme).text)
+        themeBtn.setVectorIconInBounds(
+            iconRes = R.drawable.ic_theme,
+            tintColor = AppThemeConfig.colors(currentColorTheme).text,
+            widthDp = 122,
+            heightDp = 32
+        )
     }
 
     private fun applyCurrentTheme() {
