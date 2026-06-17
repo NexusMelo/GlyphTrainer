@@ -12,7 +12,6 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.TextView
 import androidx.annotation.StringRes
-import androidx.core.widget.TextViewCompat
 
 object TutorialHudUi {
     private const val PANEL_CORNER_CUT = 30f
@@ -35,16 +34,12 @@ object TutorialHudUi {
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             includeFontPadding = false
+            setSingleLine(true)
+            maxLines = 1
+            ellipsize = null
             letterSpacing = 0.08f
             elevation = 8f
             setPadding(dp(12), 0, dp(12), 0)
-            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                this,
-                10,
-                15,
-                1,
-                android.util.TypedValue.COMPLEX_UNIT_SP
-            )
         }
     }
 

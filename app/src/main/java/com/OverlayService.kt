@@ -6,15 +6,11 @@ import android.app.Service
 import android.content.res.ColorStateList
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ImageSpan
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -22,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.graphics.Color
@@ -30,7 +27,6 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.core.widget.TextViewCompat
 import com.example.glyphtrainer.AppColorTheme
 import com.example.glyphtrainer.AppThemeConfig
 import com.example.glyphtrainer.AppThemeColors
@@ -102,7 +98,7 @@ class OverlayService : Service(),
     private lateinit var resetBtn: TextView
     private lateinit var floatingBtn: TextView
     private lateinit var floatingModeBtn: TextView
-    private lateinit var floatingCloseBtn: TextView
+    private lateinit var floatingCloseBtn: ImageView
     private lateinit var tutorialToggleBtn: TextView
     private lateinit var themeBtn: TextView
     private lateinit var tutorialLayer: FrameLayout
@@ -465,15 +461,8 @@ class OverlayService : Service(),
 
         addOverlayView(floatingBtn, floatingParams)
 
-        floatingCloseBtn = TextView(this).apply {
-            styleFloatingRoundButton(
-                textSize = 24f,
-                elevationValue = 10f,
-                fillColor = Color.argb(220, 150, 20, 20),
-                strokeWidth = 3,
-                strokeColor = Color.RED
-            )
-            setCenteredVectorIcon(R.drawable.ic_close, Color.WHITE, 22)
+        floatingCloseBtn = ImageView(this).apply {
+            styleFloatingCloseButton()
             visibility = View.GONE
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
@@ -535,14 +524,10 @@ class OverlayService : Service(),
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         includeFontPadding = false
+        setSingleLine(true)
+        maxLines = 1
+        ellipsize = null
         setPadding(dp(6), dp(6), dp(6), dp(6))
-        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-            this,
-            18,
-            textSize.toInt(),
-            1,
-            android.util.TypedValue.COMPLEX_UNIT_SP
-        )
         background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(fillColor)
@@ -556,14 +541,23 @@ class OverlayService : Service(),
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         includeFontPadding = false
+        setSingleLine(true)
+        maxLines = 1
+        ellipsize = null
         setPadding(dp(12), 0, dp(12), 0)
-        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-            this,
-            10,
-            15,
-            1,
-            android.util.TypedValue.COMPLEX_UNIT_SP
-        )
+    }
+
+    private fun ImageView.styleFloatingCloseButton() {
+        setImageResource(R.drawable.ic_close)
+        imageTintList = ColorStateList.valueOf(Color.WHITE)
+        scaleType = ImageView.ScaleType.CENTER
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.argb(220, 150, 20, 20))
+            setStroke(3, Color.RED)
+        }
+        elevation = 10f
     }
 
     private fun createTutorialControls() {
@@ -943,49 +937,8 @@ class OverlayService : Service(),
         setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null)
     }
 
-    private fun TextView.setCenteredVectorIcon(
-        @DrawableRes iconRes: Int,
-        tintColor: Int,
-        iconSizeDp: Int
-    ) {
-        val icon = ContextCompat.getDrawable(this@OverlayService, iconRes)?.mutate() ?: return
-        icon.setTint(tintColor)
-        val iconSize = dp(iconSizeDp)
-        icon.setBounds(0, 0, iconSize, iconSize)
-        val iconText = SpannableString(" ")
-        iconText.setSpan(
-            CenteredImageSpan(icon),
-            0,
-            iconText.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
-        text = iconText
-        setCompoundDrawables(null, null, null, null)
-    }
-
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
-    }
-
-    private class CenteredImageSpan(drawable: Drawable) : ImageSpan(drawable) {
-        override fun draw(
-            canvas: android.graphics.Canvas,
-            text: CharSequence,
-            start: Int,
-            end: Int,
-            x: Float,
-            top: Int,
-            y: Int,
-            bottom: Int,
-            paint: android.graphics.Paint
-        ) {
-            val drawable = drawable
-            val transY = top + (bottom - top - drawable.bounds.height()) / 2
-            canvas.save()
-            canvas.translate(x, transY.toFloat())
-            drawable.draw(canvas)
-            canvas.restore()
-        }
     }
 
     // =====================================================
