@@ -449,16 +449,13 @@ class OverlayService : Service(),
     @SuppressLint("ClickableViewAccessibility")
     private fun createFloatingControls() {
         floatingBtn = TextView(this).apply {
-            textSize = 42f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.argb(210, 0, 75, 95))
-                setStroke(4, Color.CYAN)
-            }
-            elevation = 8f
+            styleFloatingRoundButton(
+                textSize = 42f,
+                elevationValue = 8f,
+                fillColor = Color.argb(210, 0, 75, 95),
+                strokeWidth = 4,
+                strokeColor = Color.CYAN
+            )
             visibility = View.GONE
             setOnClickListener { restoreOverlay(autoCaptureEnabled) }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
@@ -481,16 +478,13 @@ class OverlayService : Service(),
 
         floatingCloseBtn = TextView(this).apply {
             setText(R.string.overlay_close)
-            textSize = 24f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.argb(220, 150, 20, 20))
-                setStroke(3, Color.RED)
-            }
-            elevation = 10f
+            styleFloatingRoundButton(
+                textSize = 24f,
+                elevationValue = 10f,
+                fillColor = Color.argb(220, 150, 20, 20),
+                strokeWidth = 3,
+                strokeColor = Color.RED
+            )
             visibility = View.GONE
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
@@ -513,10 +507,7 @@ class OverlayService : Service(),
         addOverlayView(floatingCloseBtn, floatingCloseParams)
 
         floatingModeBtn = TextView(this).apply {
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            includeFontPadding = false
+            styleFloatingPillText()
             visibility = View.GONE
             setOnClickListener {
                 autoCaptureEnabled = !autoCaptureEnabled
@@ -543,6 +534,32 @@ class OverlayService : Service(),
         applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
         updateFloatingButton()
         updateFloatingModeButton()
+    }
+
+    private fun TextView.styleFloatingRoundButton(
+        textSize: Float,
+        elevationValue: Float,
+        fillColor: Int,
+        strokeWidth: Int,
+        strokeColor: Int
+    ) {
+        this.textSize = textSize
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(fillColor)
+            setStroke(strokeWidth, strokeColor)
+        }
+        elevation = elevationValue
+    }
+
+    private fun TextView.styleFloatingPillText() {
+        textSize = 15f
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER
+        includeFontPadding = false
     }
 
     private fun createTutorialControls() {
@@ -842,12 +859,7 @@ class OverlayService : Service(),
 
         val v = TextView(this)
         v.setText(textRes)
-        v.setTextColor(textColor)
-        v.textSize = textSize
-        v.gravity = Gravity.CENTER
-        v.includeFontPadding = false
-        v.setPadding(0, 0, 0, 0)
-        v.setBackgroundColor(Color.TRANSPARENT)
+        v.styleMainControlButton(textColor, textSize)
         v.setOnClickListener{ action() }
 
         val params = WindowManager.LayoutParams(
@@ -873,6 +885,15 @@ class OverlayService : Service(),
         }
 
         return v
+    }
+
+    private fun TextView.styleMainControlButton(textColor: Int, textSize: Float) {
+        setTextColor(textColor)
+        this.textSize = textSize
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        setPadding(0, 0, 0, 0)
+        setBackgroundColor(Color.TRANSPARENT)
     }
 
     private fun shiftButtonSymbol(
@@ -1137,10 +1158,14 @@ class OverlayService : Service(),
                 R.string.overlay_mode_manual
             }
         )
-        floatingModeBtn.background = GradientDrawable().apply {
+        styleFloatingModePill(floatingModeBtn, autoCaptureEnabled)
+    }
+
+    private fun styleFloatingModePill(button: TextView, active: Boolean) {
+        button.background = GradientDrawable().apply {
             cornerRadius = FLOATING_MODE_HEIGHT / 2f
             setColor(
-                if (autoCaptureEnabled) {
+                if (active) {
                     Color.argb(210, 0, 110, 70)
                 } else {
                     Color.argb(190, 45, 45, 45)
@@ -1148,7 +1173,7 @@ class OverlayService : Service(),
             )
             setStroke(
                 3,
-                if (autoCaptureEnabled) Color.GREEN else Color.LTGRAY
+                if (active) Color.GREEN else Color.LTGRAY
             )
         }
     }
