@@ -3,6 +3,7 @@ package com
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.Service
+import android.content.res.ColorStateList
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -10,10 +11,6 @@ import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.TextPaint
-import android.text.style.MetricAffectingSpan
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -25,7 +22,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.graphics.Color
 import android.view.Gravity
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.example.glyphtrainer.AppColorTheme
 import com.example.glyphtrainer.AppThemeConfig
@@ -190,18 +189,6 @@ class OverlayService : Service(),
     private val overlayPermissionListener = AppOpsManager.OnOpChangedListener { _, packageName ->
         if (packageName == this.packageName && !canUseOverlay()) {
             mainHandler.post { stopSelf() }
-        }
-    }
-
-    private class BaselineShiftSpan(
-        private val shiftPx: Int
-    ) : MetricAffectingSpan() {
-        override fun updateDrawState(textPaint: TextPaint) {
-            textPaint.baselineShift += shiftPx
-        }
-
-        override fun updateMeasureState(textPaint: TextPaint) {
-            textPaint.baselineShift += shiftPx
         }
     }
 
@@ -388,15 +375,13 @@ class OverlayService : Service(),
 
     private fun createButtons(){
 
-        closeBtn = makeButton(R.string.overlay_close, Color.RED){ stopSelf() }
-        shiftButtonSymbol(closeBtn, R.string.overlay_close, -8)
+        closeBtn = makeIconButton(R.drawable.ic_close, Color.RED){ stopSelf() }
 
-        startBtn = makeButton(R.string.overlay_start, Color.WHITE){
+        startBtn = makeIconButton(R.drawable.ic_play, Color.WHITE){
             if (enableCapture()) {
                 updateStartButton(true)
             }
         }
-        shiftButtonSymbol(startBtn, R.string.overlay_start, -27)
 
         modeBtn = makeButton(R.string.overlay_glyph_limit, Color.CYAN, 30f){
             cancelSequencePresentation()
@@ -411,14 +396,13 @@ class OverlayService : Service(),
             updateModeButton()
         }
 
-        resetBtn = makeButton(R.string.overlay_reset, Color.YELLOW){
+        resetBtn = makeIconButton(R.drawable.ic_reset, Color.YELLOW){
             cancelSequencePresentation()
             disableCapture()
             drawView.resetGlyphs()
             val active = enableCapture()
             updateStartButton(active)
         }
-        shiftButtonSymbol(resetBtn, R.string.overlay_reset, -30)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             saveGlyphScales()
@@ -477,7 +461,6 @@ class OverlayService : Service(),
         addOverlayView(floatingBtn, floatingParams)
 
         floatingCloseBtn = TextView(this).apply {
-            setText(R.string.overlay_close)
             styleFloatingRoundButton(
                 textSize = 24f,
                 elevationValue = 10f,
@@ -485,11 +468,11 @@ class OverlayService : Service(),
                 strokeWidth = 3,
                 strokeColor = Color.RED
             )
+            setVectorIcon(R.drawable.ic_close, Color.WHITE)
             visibility = View.GONE
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
-        shiftButtonSymbol(floatingCloseBtn, R.string.overlay_close, -18)
 
         floatingCloseParams = WindowManager.LayoutParams(
             FLOATING_CLOSE_SIZE,
@@ -887,6 +870,42 @@ class OverlayService : Service(),
         return v
     }
 
+    private fun makeIconButton(
+        @DrawableRes iconRes: Int,
+        iconColor: Int,
+        action:()->Unit
+    ): TextView {
+
+        val v = TextView(this)
+        v.styleMainControlButton(iconColor, 34f)
+        v.setVectorIcon(iconRes, iconColor)
+        v.setOnClickListener{ action() }
+
+        val params = WindowManager.LayoutParams(
+            buttonSize,buttonSize,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+
+        addOverlayView(v, params)
+
+        when{
+            !::closeParams.isInitialized -> closeParams=params
+            !::startParams.isInitialized -> startParams=params
+            !::modeParams.isInitialized -> modeParams=params
+            !::resetParams.isInitialized -> resetParams=params
+            !::zoomHXPlusParams.isInitialized -> zoomHXPlusParams=params
+            !::zoomHXMinusParams.isInitialized -> zoomHXMinusParams=params
+            !::zoomVPlusParams.isInitialized -> zoomVPlusParams=params
+            else -> zoomVMinusParams=params
+        }
+
+        return v
+    }
+
     private fun TextView.styleMainControlButton(textColor: Int, textSize: Float) {
         setTextColor(textColor)
         this.textSize = textSize
@@ -896,19 +915,11 @@ class OverlayService : Service(),
         setBackgroundColor(Color.TRANSPARENT)
     }
 
-    private fun shiftButtonSymbol(
-        button: TextView,
-        @StringRes textRes: Int,
-        baselineShiftPx: Int
-    ) {
-        val symbol = SpannableString(getText(textRes))
-        symbol.setSpan(
-            BaselineShiftSpan(baselineShiftPx),
-            0,
-            symbol.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
-        button.text = symbol
+    private fun TextView.setVectorIcon(@DrawableRes iconRes: Int, tintColor: Int) {
+        text = null
+        val icon = ContextCompat.getDrawable(this@OverlayService, iconRes)?.mutate()
+        compoundDrawableTintList = ColorStateList.valueOf(tintColor)
+        setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null)
     }
 
     // =====================================================
@@ -1118,10 +1129,13 @@ class OverlayService : Service(),
     // =====================================================
 
     private fun updateStartButton(active:Boolean){
-        if(active)
+        if(active) {
             startBtn.setTextColor(Color.GREEN)
-        else
+            startBtn.setVectorIcon(R.drawable.ic_play, Color.GREEN)
+        } else {
             startBtn.setTextColor(Color.WHITE)
+            startBtn.setVectorIcon(R.drawable.ic_play, Color.WHITE)
+        }
     }
 
     private fun updateModeButton(){
