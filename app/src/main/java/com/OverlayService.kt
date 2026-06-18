@@ -388,7 +388,7 @@ class OverlayService : Service(),
                 updateStartButton(true)
             }
         }
-        applyReferencePlayButton()
+        applyReferencePlayButton(false)
 
         modeBtn = makeIconButton(glyphLimitIcon(), Color.CYAN){
             cancelSequencePresentation()
@@ -1176,14 +1176,21 @@ class OverlayService : Service(),
     // =====================================================
 
     private fun updateStartButton(active:Boolean){
-        applyReferencePlayButton()
+        applyReferencePlayButton(active)
     }
 
-    private fun applyReferencePlayButton() {
+    private fun applyReferencePlayButton(active: Boolean) {
         startBtn.text = null
         startBtn.compoundDrawableTintList = null
         startBtn.setCompoundDrawables(null, null, null, null)
-        startBtn.background = ContextCompat.getDrawable(this, R.drawable.btn_play_reference)
+        startBtn.background = ContextCompat.getDrawable(
+            this,
+            if (active) {
+                R.drawable.btn_play_reference_active
+            } else {
+                R.drawable.btn_play_reference_inactive
+            }
+        )
     }
 
     private fun updateModeButton(){
