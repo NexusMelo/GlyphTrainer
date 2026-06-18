@@ -388,6 +388,7 @@ class OverlayService : Service(),
                 updateStartButton(true)
             }
         }
+        applyReferencePlayButton()
 
         modeBtn = makeIconButton(glyphLimitIcon(), Color.CYAN){
             cancelSequencePresentation()
@@ -1175,13 +1176,14 @@ class OverlayService : Service(),
     // =====================================================
 
     private fun updateStartButton(active:Boolean){
-        if(active) {
-            startBtn.setTextColor(Color.GREEN)
-            startBtn.setVectorIcon(R.drawable.ic_play, Color.GREEN)
-        } else {
-            startBtn.setTextColor(Color.WHITE)
-            startBtn.setVectorIcon(R.drawable.ic_play, Color.WHITE)
-        }
+        applyReferencePlayButton()
+    }
+
+    private fun applyReferencePlayButton() {
+        startBtn.text = null
+        startBtn.compoundDrawableTintList = null
+        startBtn.setCompoundDrawables(null, null, null, null)
+        startBtn.background = ContextCompat.getDrawable(this, R.drawable.btn_play_reference)
     }
 
     private fun updateModeButton(){
