@@ -403,6 +403,7 @@ class OverlayService : Service(),
             updateStartButton(false)
             updateModeButton()
         }
+        updateModeButton()
 
         resetBtn = makeIconButton(R.drawable.ic_reset, Color.YELLOW){
             cancelSequencePresentation()
@@ -1201,20 +1202,14 @@ class OverlayService : Service(),
     }
 
     private fun updateModeButton(){
-        modeBtn.setTextColor(Color.CYAN)
-        modeBtn.setVectorIcon(glyphLimitIcon(), Color.CYAN)
+        applyReferenceButtonBackground(modeBtn, glyphLimitMainButton())
         updateFloatingButton()
     }
 
     private fun updateFloatingButton() {
         if (!::floatingBtn.isInitialized) return
 
-        floatingBtn.setVectorIconInBounds(
-            iconRes = glyphLimitIcon(),
-            tintColor = Color.WHITE,
-            widthDp = 36,
-            heightDp = 36
-        )
+        applyReferenceButtonBackground(floatingBtn, glyphLimitFloatingButton())
     }
 
     private fun updateFloatingModeButton() {
@@ -1243,6 +1238,24 @@ class OverlayService : Service(),
             3 -> R.drawable.ic_digit_3
             4 -> R.drawable.ic_digit_4
             else -> R.drawable.ic_digit_5
+        }
+    }
+
+    @DrawableRes
+    private fun glyphLimitMainButton(): Int {
+        return when (glyphLimit) {
+            3 -> R.drawable.btn_mode_3_reference
+            4 -> R.drawable.btn_mode_4_reference
+            else -> R.drawable.btn_mode_5_reference
+        }
+    }
+
+    @DrawableRes
+    private fun glyphLimitFloatingButton(): Int {
+        return when (glyphLimit) {
+            3 -> R.drawable.btn_floating_mode_3_reference
+            4 -> R.drawable.btn_floating_mode_4_reference
+            else -> R.drawable.btn_floating_mode_5_reference
         }
     }
 
