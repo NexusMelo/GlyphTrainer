@@ -987,7 +987,7 @@ class OverlayService : Service(),
         val controlsWidth = buttonSize * 4 + gap * 3
         val controlsStartX = (screenWidth - controlsWidth) / 2
         val controlsY = fixedControlsY ?: (
-            area.bottom + 110f + BOTTOM_CONTROLS_EXTRA_OFFSET
+            area.top - buttonSize - 70f
         ).toInt().also {
             fixedControlsY = it
         }
