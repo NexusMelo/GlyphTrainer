@@ -11,6 +11,7 @@ import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
+import android.util.Log
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -42,6 +43,7 @@ class OverlayService : Service(),
 
     private companion object {
         const val PREFERENCES_NAME = "glyph_trainer_state"
+        const val LOG_TAG = "GlyphTrainerOverlay"
         const val PREF_GLYPH_LIMIT = "glyph_limit"
         const val PREF_HORIZONTAL_SCALE = "horizontal_scale"
         const val PREF_VERTICAL_SCALE = "vertical_scale"
@@ -1616,13 +1618,16 @@ class OverlayService : Service(),
     private fun addOverlayView(view: View, params: WindowManager.LayoutParams) {
         try {
             wm.addView(view, params)
-        } catch (_: WindowManager.BadTokenException) {
+        } catch (exception: WindowManager.BadTokenException) {
+            Log.e(LOG_TAG, "WindowManager.addView failed", exception)
             creationFailed = true
             stopSelf()
-        } catch (_: IllegalArgumentException) {
+        } catch (exception: IllegalArgumentException) {
+            Log.e(LOG_TAG, "WindowManager.addView failed", exception)
             creationFailed = true
             stopSelf()
-        } catch (_: SecurityException) {
+        } catch (exception: SecurityException) {
+            Log.e(LOG_TAG, "WindowManager.addView failed", exception)
             creationFailed = true
             stopSelf()
         }
@@ -1633,9 +1638,11 @@ class OverlayService : Service(),
 
         try {
             wm.updateViewLayout(view, params)
-        } catch (_: IllegalArgumentException) {
+        } catch (exception: IllegalArgumentException) {
+            Log.e(LOG_TAG, "WindowManager.updateViewLayout failed", exception)
             stopSelf()
-        } catch (_: SecurityException) {
+        } catch (exception: SecurityException) {
+            Log.e(LOG_TAG, "WindowManager.updateViewLayout failed", exception)
             stopSelf()
         }
     }
@@ -1645,9 +1652,11 @@ class OverlayService : Service(),
 
         try {
             wm.removeView(view)
-        } catch (_: IllegalArgumentException) {
+        } catch (exception: IllegalArgumentException) {
+            Log.w(LOG_TAG, "WindowManager.removeView failed", exception)
             // The view may already have been removed by WindowManager.
-        } catch (_: SecurityException) {
+        } catch (exception: SecurityException) {
+            Log.w(LOG_TAG, "WindowManager.removeView failed", exception)
             // Overlay permission may have been revoked during teardown.
         }
     }
