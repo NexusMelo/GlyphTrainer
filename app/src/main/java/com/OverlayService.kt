@@ -382,6 +382,7 @@ class OverlayService : Service(),
     private fun createButtons(){
 
         closeBtn = makeIconButton(R.drawable.ic_close, Color.RED){ stopSelf() }
+        applyReferenceButtonBackground(closeBtn, R.drawable.btn_close_reference)
 
         startBtn = makeIconButton(R.drawable.ic_play, Color.WHITE){
             if (enableCapture()) {
@@ -410,6 +411,7 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
+        applyReferenceButtonBackground(resetBtn, R.drawable.btn_reset_reference)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             saveGlyphScales()
@@ -1180,17 +1182,24 @@ class OverlayService : Service(),
     }
 
     private fun applyReferencePlayButton(active: Boolean) {
-        startBtn.text = null
-        startBtn.compoundDrawableTintList = null
-        startBtn.setCompoundDrawables(null, null, null, null)
-        startBtn.background = ContextCompat.getDrawable(
-            this,
+        applyReferenceButtonBackground(
+            startBtn,
             if (active) {
                 R.drawable.btn_play_reference_active
             } else {
                 R.drawable.btn_play_reference_inactive
             }
         )
+    }
+
+    private fun applyReferenceButtonBackground(
+        button: TextView,
+        @DrawableRes drawableRes: Int
+    ) {
+        button.text = null
+        button.compoundDrawableTintList = null
+        button.setCompoundDrawables(null, null, null, null)
+        button.background = ContextCompat.getDrawable(this, drawableRes)
     }
 
     private fun updateModeButton(){
@@ -1220,13 +1229,14 @@ class OverlayService : Service(),
             floatingModeParams.y = floatingModeY()
             updateOverlayView(floatingModeBtn, floatingModeParams)
         }
-        floatingModeBtn.setVectorIconInBounds(
-            iconRes = if (autoCaptureEnabled) R.drawable.ic_auto else R.drawable.ic_manual,
-            tintColor = Color.WHITE,
-            widthDp = if (autoCaptureEnabled) 56 else 84,
-            heightDp = 20
+        applyReferenceButtonBackground(
+            floatingModeBtn,
+            if (autoCaptureEnabled) {
+                R.drawable.btn_auto_reference
+            } else {
+                R.drawable.btn_manual_reference
+            }
         )
-        styleFloatingModePill(floatingModeBtn, autoCaptureEnabled)
     }
 
     @DrawableRes
@@ -1269,16 +1279,13 @@ class OverlayService : Service(),
     private fun updateThemeButton() {
         if (!::themeBtn.isInitialized) return
 
-        TutorialHudUi.styleSelector(
+        applyReferenceButtonBackground(
             themeBtn,
-            AppThemeConfig.colors(currentColorTheme),
-            currentColorTheme
-        )
-        themeBtn.setVectorIconInBounds(
-            iconRes = R.drawable.ic_theme,
-            tintColor = AppThemeConfig.colors(currentColorTheme).text,
-            widthDp = 68,
-            heightDp = 20
+            when (currentColorTheme) {
+                AppColorTheme.STANDARD -> R.drawable.btn_theme_reference_standard
+                AppColorTheme.GREEN -> R.drawable.btn_theme_reference_green
+                AppColorTheme.BLUE -> R.drawable.btn_theme_reference_blue
+            }
         )
     }
 
