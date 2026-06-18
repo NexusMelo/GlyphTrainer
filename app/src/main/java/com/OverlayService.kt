@@ -88,6 +88,9 @@ class OverlayService : Service(),
         const val THEME_CONTENT_WIDTH = 324
         const val THEME_CONTENT_HEIGHT = 120
         const val TOP_CONTROL_GAP = 24
+        const val GLYPH_BOX_BASE_Y = 120f
+        const val GLYPH_BOX_VERTICAL_OFFSET = 60f
+        const val GLYPH_BOX_TOP_FACTOR = 0.55f
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
@@ -734,6 +737,10 @@ class OverlayService : Service(),
         themeParams = createThemeControlParams()
         addOverlayView(themeBtn, themeParams)
 
+        if (!drawArea.isEmpty && fixedControlsY != null) {
+            positionSkinControl(drawView.width, fixedControlsY ?: return)
+        }
+
         applyCurrentTheme()
     }
 
@@ -989,6 +996,7 @@ class OverlayService : Service(),
         updateOverlayView(startBtn, startParams)
         updateOverlayView(modeBtn, modeParams)
         updateOverlayView(resetBtn, resetParams)
+        positionSkinControl(screenWidth, controlsY)
         val centerY = (drawView.height / 2) - 200
         val spacing = 220
         val startX = (drawView.width / 2) - (spacing * 2)
@@ -1009,6 +1017,21 @@ class OverlayService : Service(),
         updateOverlayView(zoomHXPlus, zoomHXPlusParams)
         updateOverlayView(zoomVMinus, zoomVMinusParams)
         updateOverlayView(zoomVPlus, zoomVPlusParams)
+    }
+
+    private fun positionSkinControl(screenWidth: Int, controlsY: Int) {
+        if (!::themeBtn.isInitialized || !::themeParams.isInitialized) return
+
+        val glyphSize = screenWidth / 6f
+        val glyphBoxTop = GLYPH_BOX_BASE_Y + GLYPH_BOX_VERTICAL_OFFSET +
+                glyphSize * GLYPH_BOX_TOP_FACTOR
+        val glyphBoxBottom = glyphBoxTop + glyphSize
+        val availableTop = glyphBoxBottom
+        val availableBottom = controlsY.toFloat()
+
+        themeParams.x = ((screenWidth - THEME_CONTENT_WIDTH) / 2f).toInt()
+        themeParams.y = ((availableTop + availableBottom - THEME_CONTENT_HEIGHT) / 2f).toInt()
+        updateOverlayView(themeBtn, themeParams)
     }
 
     // =====================================================
