@@ -63,11 +63,11 @@ class OverlayService : Service(),
         const val FLOATING_CONTENT_BUTTON_SIZE = 64
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
-        const val FLOATING_MODE_WIDTH = 176
-        const val FLOATING_MODE_HEIGHT = 64
-        const val FLOATING_MODE_MANUAL_WIDTH = 116
-        const val FLOATING_MODE_AUTO_WIDTH = 82
-        const val FLOATING_MODE_CONTENT_HEIGHT = 40
+        const val FLOATING_MODE_WIDTH = 348
+        const val FLOATING_MODE_HEIGHT = 120
+        const val FLOATING_MODE_MANUAL_WIDTH = 348
+        const val FLOATING_MODE_AUTO_WIDTH = 348
+        const val FLOATING_MODE_CONTENT_HEIGHT = 120
         const val FLOATING_MODE_GAP = 16
         const val FLOATING_CLOSE_SIZE = 48
         const val FLOATING_CLOSE_OVERLAP = FLOATING_CLOSE_SIZE / 2
@@ -477,7 +477,7 @@ class OverlayService : Service(),
                 strokeWidth = 3,
                 strokeColor = Color.RED
             )
-            setVectorIcon(R.drawable.ic_close, Color.WHITE)
+            applyReferenceButtonBackground(this, R.drawable.btn_floating_close_reference)
             visibility = View.GONE
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
