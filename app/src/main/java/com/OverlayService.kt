@@ -62,7 +62,7 @@ class OverlayService : Service(),
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
         const val FLOATING_BUTTON_SIZE = 256
-        const val FLOATING_CONTENT_BUTTON_SIZE = 256
+        const val FLOATING_CONTENT_BUTTON_SIZE = 224
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
         const val FLOATING_MODE_WIDTH = 256
@@ -85,8 +85,8 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
-        const val THEME_CONTENT_WIDTH = 324
-        const val THEME_CONTENT_HEIGHT = 120
+        const val THEME_CONTENT_WIDTH = 284
+        const val THEME_CONTENT_HEIGHT = 105
         const val TOP_CONTROL_GAP = 24
         const val GLYPH_BOX_BASE_Y = 120f
         const val GLYPH_BOX_VERTICAL_OFFSET = 60f
