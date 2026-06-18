@@ -51,6 +51,7 @@ class OverlayService : Service(),
         const val PREF_FLOATING_GROUP_X = "floating_group_x"
         const val PREF_FLOATING_GROUP_Y = "floating_group_y"
         const val PREF_OVERLAY_MINIMIZED = "overlay_minimized"
+        const val PREF_OVERLAY_OPACITY_PERCENT = "overlay_opacity_percent"
         const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
         const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
         const val PREF_PREMIUM_ENABLED = "premium_enabled"
@@ -61,6 +62,7 @@ class OverlayService : Service(),
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
         const val DEFAULT_OVERLAY_MINIMIZED = false
+        const val DEFAULT_OVERLAY_OPACITY_PERCENT = 100
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
         const val FLOATING_BUTTON_SIZE = 256
@@ -88,9 +90,13 @@ class OverlayService : Service(),
         const val THEME_CONTROL_WIDTH = 188
         const val THEME_CONTENT_WIDTH = 256
         const val THEME_CONTENT_HEIGHT = 95
+        const val OPACITY_CONTENT_WIDTH = 256
+        const val OPACITY_CONTENT_HEIGHT = 95
+        const val FLOATING_OPACITY_GAP = 16
         const val FLOATING_GROUP_HEIGHT =
             FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT +
-                    FLOATING_SKIN_GAP + THEME_CONTENT_HEIGHT
+                    FLOATING_SKIN_GAP + THEME_CONTENT_HEIGHT +
+                    FLOATING_OPACITY_GAP + OPACITY_CONTENT_HEIGHT
         const val TOP_CONTROL_GAP = 24
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
@@ -111,6 +117,7 @@ class OverlayService : Service(),
     private lateinit var floatingCloseBtn: TextView
     private lateinit var tutorialToggleBtn: TextView
     private lateinit var themeBtn: TextView
+    private lateinit var opacityBtn: TextView
     private lateinit var tutorialLayer: FrameLayout
     private lateinit var tutorialPointer: TextView
     private lateinit var tutorialCard: LinearLayout
@@ -139,6 +146,7 @@ class OverlayService : Service(),
     private lateinit var floatingCloseParams: WindowManager.LayoutParams
     private lateinit var tutorialToggleParams: WindowManager.LayoutParams
     private lateinit var themeParams: WindowManager.LayoutParams
+    private lateinit var opacityParams: WindowManager.LayoutParams
     private lateinit var tutorialLayerParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
@@ -209,6 +217,7 @@ class OverlayService : Service(),
     private var autoCaptureEnabled = DEFAULT_AUTO_CAPTURE
     private var showTutorialOnLaunch = DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
     private var currentColorTheme = AppThemeConfig.DEFAULT_THEME
+    private var overlayOpacityPercent = DEFAULT_OVERLAY_OPACITY_PERCENT
     private var firstLaunchTutorialPending = false
     private var capturing = false
     private var replayIndex = 0
@@ -299,6 +308,9 @@ class OverlayService : Service(),
         createThemeControl()
         if (creationFailed) return
 
+        createOpacityControl()
+        if (creationFailed) return
+
         if (TUTORIAL_ENABLED) {
             createTutorialControls()
             if (creationFailed) return
@@ -309,6 +321,7 @@ class OverlayService : Service(),
         updateModeButton()
         updateProgramButtons()
         updateTutorialToggleButton()
+        applyOverlayOpacity()
         registerOverlayPermissionListener()
         applyRestoredOverlayState()
 
@@ -590,6 +603,14 @@ class OverlayService : Service(),
                 FLOATING_MODE_HEIGHT + FLOATING_SKIN_GAP
     }
 
+    private fun floatingOpacityX(): Int {
+        return floatingGroupX + (FLOATING_MODE_WIDTH - OPACITY_CONTENT_WIDTH) / 2
+    }
+
+    private fun floatingOpacityY(): Int {
+        return floatingSkinY() + THEME_CONTENT_HEIGHT + FLOATING_OPACITY_GAP
+    }
+
     private fun createTutorialControls() {
         tutorialToggleBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
@@ -752,12 +773,38 @@ class OverlayService : Service(),
         applyCurrentTheme()
     }
 
+    private fun createOpacityControl() {
+        opacityBtn = TutorialHudUi.makeControlButton(this).apply {
+            visibility = View.GONE
+            setOnClickListener {
+                overlayOpacityPercent = nextOverlayOpacityPercent()
+                saveOverlayOpacity()
+                applyOverlayOpacity()
+            }
+            setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
+        }
+        applyReferenceButtonBackground(opacityBtn, R.drawable.btn_opacity_reference)
+        opacityParams = createOpacityControlParams()
+        addOverlayView(opacityBtn, opacityParams)
+    }
+
     private fun createThemeControlParams(): WindowManager.LayoutParams {
         return createHudControlParams(
             THEME_CONTENT_WIDTH,
             THEME_CONTENT_HEIGHT,
             floatingSkinX(),
             floatingSkinY()
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+        }
+    }
+
+    private fun createOpacityControlParams(): WindowManager.LayoutParams {
+        return createHudControlParams(
+            OPACITY_CONTENT_WIDTH,
+            OPACITY_CONTENT_HEIGHT,
+            floatingOpacityX(),
+            floatingOpacityY()
         ).apply {
             gravity = Gravity.TOP or Gravity.END
         }
@@ -876,6 +923,11 @@ class OverlayService : Service(),
             themeParams.x = floatingSkinX()
             themeParams.y = floatingSkinY()
             updateOverlayView(themeBtn, themeParams)
+        }
+        if (::opacityParams.isInitialized) {
+            opacityParams.x = floatingOpacityX()
+            opacityParams.y = floatingOpacityY()
+            updateOverlayView(opacityBtn, opacityParams)
         }
     }
 
@@ -1130,6 +1182,10 @@ class OverlayService : Service(),
             updateThemeButton()
             themeBtn.visibility = View.VISIBLE
         }
+        if (::opacityBtn.isInitialized) {
+            applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
+            opacityBtn.visibility = View.VISIBLE
+        }
         updateProgramButtons()
 
         if (::floatingBtn.isInitialized) {
@@ -1161,6 +1217,9 @@ class OverlayService : Service(),
         if (::themeBtn.isInitialized) {
             themeBtn.visibility = View.GONE
         }
+        if (::opacityBtn.isInitialized) {
+            opacityBtn.visibility = View.GONE
+        }
         overlayMinimized = false
         saveOverlayMinimizedState()
         updateStartButton(false)
@@ -1187,6 +1246,33 @@ class OverlayService : Service(),
         startBtn.visibility = visibility
         modeBtn.visibility = visibility
         resetBtn.visibility = visibility
+    }
+
+    private fun nextOverlayOpacityPercent(): Int {
+        return when (overlayOpacityPercent) {
+            100 -> 80
+            80 -> 60
+            else -> 100
+        }
+    }
+
+    private fun applyOverlayOpacity() {
+        val overlayAlpha = overlayOpacityPercent / 100f
+        if (::drawView.isInitialized) {
+            drawView.alpha = overlayAlpha
+        }
+        if (::closeBtn.isInitialized) {
+            closeBtn.alpha = overlayAlpha
+        }
+        if (::startBtn.isInitialized) {
+            startBtn.alpha = overlayAlpha
+        }
+        if (::modeBtn.isInitialized) {
+            modeBtn.alpha = overlayAlpha
+        }
+        if (::resetBtn.isInitialized) {
+            resetBtn.alpha = overlayAlpha
+        }
     }
 
     // =====================================================
@@ -1544,6 +1630,11 @@ class OverlayService : Service(),
             PREF_OVERLAY_MINIMIZED,
             DEFAULT_OVERLAY_MINIMIZED
         )
+        overlayOpacityPercent = preferences.getInt(
+            PREF_OVERLAY_OPACITY_PERCENT,
+            DEFAULT_OVERLAY_OPACITY_PERCENT
+        ).takeIf { it == 100 || it == 80 || it == 60 }
+            ?: DEFAULT_OVERLAY_OPACITY_PERCENT
         overlayMinimized = false
 
         preferences.edit {
@@ -1611,6 +1702,12 @@ class OverlayService : Service(),
         }
     }
 
+    private fun saveOverlayOpacity() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putInt(PREF_OVERLAY_OPACITY_PERCENT, overlayOpacityPercent)
+        }
+    }
+
     // =====================================================
     // DESTROY
     // =====================================================
@@ -1630,6 +1727,7 @@ class OverlayService : Service(),
         if (::floatingCloseBtn.isInitialized) removeOverlayView(floatingCloseBtn)
         if (::tutorialToggleBtn.isInitialized) removeOverlayView(tutorialToggleBtn)
         if (::themeBtn.isInitialized) removeOverlayView(themeBtn)
+        if (::opacityBtn.isInitialized) removeOverlayView(opacityBtn)
         if (::tutorialLayer.isInitialized) removeOverlayView(tutorialLayer)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)
         if (::zoomHXMinus.isInitialized) removeOverlayView(zoomHXMinus)
