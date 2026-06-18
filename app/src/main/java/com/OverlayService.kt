@@ -83,8 +83,8 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
-        const val THEME_CONTENT_WIDTH = 108
-        const val THEME_CONTENT_HEIGHT = 40
+        const val THEME_CONTENT_WIDTH = 324
+        const val THEME_CONTENT_HEIGHT = 120
         const val TOP_CONTROL_GAP = 24
         const val BOTTOM_CONTROLS_EXTRA_OFFSET = 100f
         const val TUTORIAL_CARD_WIDTH = 560
@@ -737,13 +737,11 @@ class OverlayService : Service(),
 
     private fun createThemeControlParams(): WindowManager.LayoutParams {
         val themeBaseX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
-        val themeX = themeBaseX + (THEME_CONTROL_WIDTH - THEME_CONTENT_WIDTH) / 2
-        val themeY = TUTORIAL_BUTTON_MARGIN + (TUTORIAL_BUTTON_HEIGHT - THEME_CONTENT_HEIGHT) / 2
         return createHudControlParams(
             THEME_CONTENT_WIDTH,
             THEME_CONTENT_HEIGHT,
-            themeX,
-            themeY
+            themeBaseX,
+            TUTORIAL_BUTTON_MARGIN
         )
     }
 
