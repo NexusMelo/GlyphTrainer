@@ -84,8 +84,8 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
-        const val THEME_CONTENT_WIDTH = 284
-        const val THEME_CONTENT_HEIGHT = 105
+        const val THEME_CONTENT_WIDTH = 256
+        const val THEME_CONTENT_HEIGHT = 95
         const val FLOATING_GROUP_HEIGHT =
             FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT +
                     FLOATING_SKIN_GAP + THEME_CONTENT_HEIGHT
@@ -1269,10 +1269,22 @@ class OverlayService : Service(),
 
     @DrawableRes
     private fun glyphLimitFloatingButton(): Int {
-        return when (glyphLimit) {
-            3 -> R.drawable.btn_floating_mode_3_reference
-            4 -> R.drawable.btn_floating_mode_4_reference
-            else -> R.drawable.btn_floating_mode_5_reference
+        return when (currentColorTheme) {
+            AppColorTheme.STANDARD -> when (glyphLimit) {
+                3 -> R.drawable.btn_floating_mode_3_reference
+                4 -> R.drawable.btn_floating_mode_4_reference
+                else -> R.drawable.btn_floating_mode_5_reference
+            }
+            AppColorTheme.GREEN -> when (glyphLimit) {
+                3 -> R.drawable.btn_floating_mode_3_green_reference
+                4 -> R.drawable.btn_floating_mode_4_green_reference
+                else -> R.drawable.btn_floating_mode_5_green_reference
+            }
+            AppColorTheme.BLUE -> when (glyphLimit) {
+                3 -> R.drawable.btn_floating_mode_3_blue_reference
+                4 -> R.drawable.btn_floating_mode_4_blue_reference
+                else -> R.drawable.btn_floating_mode_5_blue_reference
+            }
         }
     }
 
@@ -1335,6 +1347,9 @@ class OverlayService : Service(),
         }
         if (::modeBtn.isInitialized) {
             updateModeButton()
+        }
+        if (::floatingBtn.isInitialized) {
+            updateFloatingButton()
         }
         updateTutorialIndicators(colors)
     }
