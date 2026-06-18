@@ -88,7 +88,6 @@ class OverlayService : Service(),
         const val THEME_CONTENT_WIDTH = 324
         const val THEME_CONTENT_HEIGHT = 120
         const val TOP_CONTROL_GAP = 24
-        const val BOTTOM_CONTROLS_EXTRA_OFFSET = 100f
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
@@ -955,23 +954,6 @@ class OverlayService : Service(),
         setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null)
     }
 
-    private fun TextView.setVectorIconInBounds(
-        @DrawableRes iconRes: Int,
-        tintColor: Int,
-        widthDp: Int,
-        heightDp: Int
-    ) {
-        text = null
-        val icon = ContextCompat.getDrawable(this@OverlayService, iconRes)?.mutate() ?: return
-        icon.setTint(tintColor)
-        icon.setBounds(0, 0, dp(widthDp), dp(heightDp))
-        setCompoundDrawables(null, icon, null, null)
-    }
-
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
-    }
-
     // =====================================================
     // POSITIONING
     // =====================================================
@@ -1270,23 +1252,6 @@ class OverlayService : Service(),
             3 -> R.drawable.btn_floating_mode_3_reference
             4 -> R.drawable.btn_floating_mode_4_reference
             else -> R.drawable.btn_floating_mode_5_reference
-        }
-    }
-
-    private fun styleFloatingModePill(button: TextView, active: Boolean) {
-        button.background = GradientDrawable().apply {
-            cornerRadius = FLOATING_MODE_HEIGHT / 2f
-            setColor(
-                if (active) {
-                    Color.argb(210, 0, 110, 70)
-                } else {
-                    Color.argb(190, 45, 45, 45)
-                }
-            )
-            setStroke(
-                3,
-                if (active) Color.GREEN else Color.LTGRAY
-            )
         }
     }
 
