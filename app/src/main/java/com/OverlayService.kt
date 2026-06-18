@@ -59,17 +59,17 @@ class OverlayService : Service(),
         const val DEFAULT_AUTO_CAPTURE = false
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
-        const val FLOATING_BUTTON_SIZE = 132
-        const val FLOATING_CONTENT_BUTTON_SIZE = 64
+        const val FLOATING_BUTTON_SIZE = 256
+        const val FLOATING_CONTENT_BUTTON_SIZE = 256
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
-        const val FLOATING_MODE_WIDTH = 348
-        const val FLOATING_MODE_HEIGHT = 120
-        const val FLOATING_MODE_MANUAL_WIDTH = 348
-        const val FLOATING_MODE_AUTO_WIDTH = 348
-        const val FLOATING_MODE_CONTENT_HEIGHT = 120
+        const val FLOATING_MODE_WIDTH = 256
+        const val FLOATING_MODE_HEIGHT = 80
+        const val FLOATING_MODE_MANUAL_WIDTH = 232
+        const val FLOATING_MODE_AUTO_WIDTH = 232
+        const val FLOATING_MODE_CONTENT_HEIGHT = 80
         const val FLOATING_MODE_GAP = 16
-        const val FLOATING_CLOSE_SIZE = 48
+        const val FLOATING_CLOSE_SIZE = 96
         const val FLOATING_CLOSE_OVERLAP = FLOATING_CLOSE_SIZE / 2
         const val FLOATING_GROUP_HEIGHT =
             FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT
@@ -1243,10 +1243,22 @@ class OverlayService : Service(),
 
     @DrawableRes
     private fun glyphLimitMainButton(): Int {
-        return when (glyphLimit) {
-            3 -> R.drawable.btn_mode_3_reference
-            4 -> R.drawable.btn_mode_4_reference
-            else -> R.drawable.btn_mode_5_reference
+        return when (currentColorTheme) {
+            AppColorTheme.STANDARD -> when (glyphLimit) {
+                3 -> R.drawable.btn_mode_3_reference
+                4 -> R.drawable.btn_mode_4_reference
+                else -> R.drawable.btn_mode_5_reference
+            }
+            AppColorTheme.GREEN -> when (glyphLimit) {
+                3 -> R.drawable.btn_mode_3_green_reference
+                4 -> R.drawable.btn_mode_4_green_reference
+                else -> R.drawable.btn_mode_5_green_reference
+            }
+            AppColorTheme.BLUE -> when (glyphLimit) {
+                3 -> R.drawable.btn_mode_3_blue_reference
+                4 -> R.drawable.btn_mode_4_blue_reference
+                else -> R.drawable.btn_mode_5_blue_reference
+            }
         }
     }
 
@@ -1332,6 +1344,9 @@ class OverlayService : Service(),
         }
         if (::themeBtn.isInitialized) {
             updateThemeButton()
+        }
+        if (::modeBtn.isInitialized) {
+            updateModeButton()
         }
         updateTutorialIndicators(colors)
     }
