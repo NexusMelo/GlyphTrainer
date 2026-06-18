@@ -71,10 +71,9 @@ class OverlayService : Service(),
         const val FLOATING_MODE_AUTO_WIDTH = 232
         const val FLOATING_MODE_CONTENT_HEIGHT = 80
         const val FLOATING_MODE_GAP = 16
+        const val FLOATING_SKIN_GAP = 16
         const val FLOATING_CLOSE_SIZE = 96
         const val FLOATING_CLOSE_OVERLAP = FLOATING_CLOSE_SIZE / 2
-        const val FLOATING_GROUP_HEIGHT =
-            FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 2_000L
         const val REPLAY_START_DELAY_MS = 1_000L
@@ -87,10 +86,10 @@ class OverlayService : Service(),
         const val THEME_CONTROL_WIDTH = 188
         const val THEME_CONTENT_WIDTH = 284
         const val THEME_CONTENT_HEIGHT = 105
+        const val FLOATING_GROUP_HEIGHT =
+            FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT +
+                    FLOATING_SKIN_GAP + THEME_CONTENT_HEIGHT
         const val TOP_CONTROL_GAP = 24
-        const val GLYPH_BOX_BASE_Y = 120f
-        const val GLYPH_BOX_VERTICAL_OFFSET = 60f
-        const val GLYPH_BOX_TOP_FACTOR = 0.55f
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
         const val TUTORIAL_CARD_MARGIN = 24
@@ -580,6 +579,15 @@ class OverlayService : Service(),
                 (FLOATING_MODE_HEIGHT - FLOATING_MODE_CONTENT_HEIGHT) / 2
     }
 
+    private fun floatingSkinX(): Int {
+        return floatingGroupX + (FLOATING_MODE_WIDTH - THEME_CONTENT_WIDTH) / 2
+    }
+
+    private fun floatingSkinY(): Int {
+        return floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP +
+                FLOATING_MODE_HEIGHT + FLOATING_SKIN_GAP
+    }
+
     private fun createTutorialControls() {
         tutorialToggleBtn = TutorialHudUi.makeControlButton(this).apply {
             setOnClickListener {
@@ -728,30 +736,29 @@ class OverlayService : Service(),
 
     private fun createThemeControl() {
         themeBtn = TutorialHudUi.makeControlButton(this).apply {
+            visibility = View.GONE
             setOnClickListener {
                 currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
                 saveColorTheme()
                 applyCurrentTheme()
             }
+            setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
         themeParams = createThemeControlParams()
         addOverlayView(themeBtn, themeParams)
-
-        if (!drawArea.isEmpty && fixedControlsY != null) {
-            positionSkinControl(drawView.width, fixedControlsY ?: return)
-        }
 
         applyCurrentTheme()
     }
 
     private fun createThemeControlParams(): WindowManager.LayoutParams {
-        val themeBaseX = TUTORIAL_BUTTON_MARGIN + TUTORIAL_CONTROL_WIDTH + TOP_CONTROL_GAP
         return createHudControlParams(
             THEME_CONTENT_WIDTH,
             THEME_CONTENT_HEIGHT,
-            themeBaseX,
-            TUTORIAL_BUTTON_MARGIN
-        )
+            floatingSkinX(),
+            floatingSkinY()
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+        }
     }
 
     private fun createHudControlParams(
@@ -862,6 +869,11 @@ class OverlayService : Service(),
             floatingModeParams.x = floatingModeX()
             floatingModeParams.y = floatingModeY()
             updateOverlayView(floatingModeBtn, floatingModeParams)
+        }
+        if (::themeParams.isInitialized) {
+            themeParams.x = floatingSkinX()
+            themeParams.y = floatingSkinY()
+            updateOverlayView(themeBtn, themeParams)
         }
     }
 
@@ -996,7 +1008,6 @@ class OverlayService : Service(),
         updateOverlayView(startBtn, startParams)
         updateOverlayView(modeBtn, modeParams)
         updateOverlayView(resetBtn, resetParams)
-        positionSkinControl(screenWidth, controlsY)
         val centerY = (drawView.height / 2) - 200
         val spacing = 220
         val startX = (drawView.width / 2) - (spacing * 2)
@@ -1017,21 +1028,6 @@ class OverlayService : Service(),
         updateOverlayView(zoomHXPlus, zoomHXPlusParams)
         updateOverlayView(zoomVMinus, zoomVMinusParams)
         updateOverlayView(zoomVPlus, zoomVPlusParams)
-    }
-
-    private fun positionSkinControl(screenWidth: Int, controlsY: Int) {
-        if (!::themeBtn.isInitialized || !::themeParams.isInitialized) return
-
-        val glyphSize = screenWidth / 6f
-        val glyphBoxTop = GLYPH_BOX_BASE_Y + GLYPH_BOX_VERTICAL_OFFSET +
-                glyphSize * GLYPH_BOX_TOP_FACTOR
-        val glyphBoxBottom = glyphBoxTop + glyphSize
-        val availableTop = glyphBoxBottom
-        val availableBottom = controlsY.toFloat()
-
-        themeParams.x = ((screenWidth - THEME_CONTENT_WIDTH) / 2f).toInt()
-        themeParams.y = ((availableTop + availableBottom - THEME_CONTENT_HEIGHT) / 2f).toInt()
-        updateOverlayView(themeBtn, themeParams)
     }
 
     // =====================================================
@@ -1119,7 +1115,9 @@ class OverlayService : Service(),
             tutorialToggleBtn.visibility = View.GONE
         }
         if (::themeBtn.isInitialized) {
-            themeBtn.visibility = View.GONE
+            applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
+            updateThemeButton()
+            themeBtn.visibility = View.VISIBLE
         }
         updateProgramButtons()
 
@@ -1150,7 +1148,7 @@ class OverlayService : Service(),
             tutorialToggleBtn.visibility = View.VISIBLE
         }
         if (::themeBtn.isInitialized) {
-            themeBtn.visibility = View.VISIBLE
+            themeBtn.visibility = View.GONE
         }
         overlayMinimized = false
         updateStartButton(false)
