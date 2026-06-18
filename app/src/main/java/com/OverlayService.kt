@@ -50,6 +50,7 @@ class OverlayService : Service(),
         const val PREF_AUTO_CAPTURE = "auto_capture"
         const val PREF_FLOATING_GROUP_X = "floating_group_x"
         const val PREF_FLOATING_GROUP_Y = "floating_group_y"
+        const val PREF_OVERLAY_MINIMIZED = "overlay_minimized"
         const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
         const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
         const val PREF_PREMIUM_ENABLED = "premium_enabled"
@@ -59,6 +60,7 @@ class OverlayService : Service(),
         const val DEFAULT_GLYPH_LIMIT = 5
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
+        const val DEFAULT_OVERLAY_MINIMIZED = false
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
         const val FLOATING_BUTTON_SIZE = 256
@@ -213,6 +215,7 @@ class OverlayService : Service(),
     private var replayGlyphVisible = false
     private var tutorialStepIndex = 0
     private var overlayMinimized = false
+    private var restoreMinimizedOnCreate = DEFAULT_OVERLAY_MINIMIZED
     private var creationFailed = false
     private var permissionListenerRegistered = false
 
@@ -307,6 +310,7 @@ class OverlayService : Service(),
         updateProgramButtons()
         updateTutorialToggleButton()
         registerOverlayPermissionListener()
+        applyRestoredOverlayState()
 
         if (TUTORIAL_ENABLED && (firstLaunchTutorialPending || showTutorialOnLaunch)) {
             mainHandler.postDelayed({ showTutorial() }, 250L)
@@ -316,8 +320,6 @@ class OverlayService : Service(),
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!canUseOverlay() || creationFailed) {
             stopSelf()
-        } else if (overlayMinimized) {
-            restoreOverlay()
         }
 
         return START_NOT_STICKY
@@ -1101,10 +1103,19 @@ class OverlayService : Service(),
         }
     }
 
+    private fun applyRestoredOverlayState() {
+        if (restoreMinimizedOnCreate) {
+            minimizeOverlay()
+        } else {
+            saveOverlayMinimizedState()
+        }
+    }
+
     private fun minimizeOverlay() {
         if (overlayMinimized || !::drawView.isInitialized) return
 
         overlayMinimized = true
+        saveOverlayMinimizedState()
         cancelSequencePresentation()
         disableCapture()
         drawView.resetGlyphs()
@@ -1151,6 +1162,7 @@ class OverlayService : Service(),
             themeBtn.visibility = View.GONE
         }
         overlayMinimized = false
+        saveOverlayMinimizedState()
         updateStartButton(false)
         updateModeButton()
         updateProgramButtons()
@@ -1528,6 +1540,11 @@ class OverlayService : Service(),
             PREF_FLOATING_GROUP_Y,
             FLOATING_BUTTON_TOP
         )
+        restoreMinimizedOnCreate = preferences.getBoolean(
+            PREF_OVERLAY_MINIMIZED,
+            DEFAULT_OVERLAY_MINIMIZED
+        )
+        overlayMinimized = false
 
         preferences.edit {
             if (firstLaunchTutorialPending) {
@@ -1585,6 +1602,12 @@ class OverlayService : Service(),
         getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
             putInt(PREF_FLOATING_GROUP_X, floatingGroupX)
             putInt(PREF_FLOATING_GROUP_Y, floatingGroupY)
+        }
+    }
+
+    private fun saveOverlayMinimizedState() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(PREF_OVERLAY_MINIMIZED, overlayMinimized)
         }
     }
 
