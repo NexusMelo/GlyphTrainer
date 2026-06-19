@@ -79,7 +79,7 @@ class OverlayService : Service(),
         const val FLOATING_MODE_GAP = 16
         const val FLOATING_SKIN_GAP = 16
         const val FLOATING_CLOSE_SIZE = 96
-        const val FLOATING_CLOSE_OVERLAP = FLOATING_CLOSE_SIZE / 2
+        const val FLOATING_CLOSE_OVERLAP = 72
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 2_000L
         const val REPLAY_START_DELAY_MS = 1_000L
