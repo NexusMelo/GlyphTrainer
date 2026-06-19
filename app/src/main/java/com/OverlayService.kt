@@ -70,10 +70,12 @@ class OverlayService : Service(),
         const val FLOATING_BUTTON_MARGIN = 24
         const val FLOATING_BUTTON_TOP = 180
         const val FLOATING_MODE_WIDTH = 256
-        const val FLOATING_MODE_HEIGHT = 80
-        const val FLOATING_MODE_MANUAL_WIDTH = 232
-        const val FLOATING_MODE_AUTO_WIDTH = 232
-        const val FLOATING_MODE_CONTENT_HEIGHT = 80
+        const val FLOATING_MODE_HEIGHT = 95
+        const val FLOATING_SECONDARY_WIDTH = 256
+        const val FLOATING_SECONDARY_HEIGHT = 95
+        const val FLOATING_MODE_MANUAL_WIDTH = FLOATING_SECONDARY_WIDTH
+        const val FLOATING_MODE_AUTO_WIDTH = FLOATING_SECONDARY_WIDTH
+        const val FLOATING_MODE_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val FLOATING_MODE_GAP = 16
         const val FLOATING_SKIN_GAP = 16
         const val FLOATING_CLOSE_SIZE = 96
@@ -88,10 +90,10 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
-        const val THEME_CONTENT_WIDTH = 256
-        const val THEME_CONTENT_HEIGHT = 95
-        const val OPACITY_CONTENT_WIDTH = 256
-        const val OPACITY_CONTENT_HEIGHT = 95
+        const val THEME_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
+        const val THEME_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
+        const val OPACITY_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
+        const val OPACITY_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val FLOATING_OPACITY_GAP = 16
         const val FLOATING_GROUP_HEIGHT =
             FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT +
@@ -780,12 +782,13 @@ class OverlayService : Service(),
                 overlayOpacityPercent = nextOverlayOpacityPercent()
                 saveOverlayOpacity()
                 applyOverlayOpacity()
+                updateOpacityButton()
             }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
-        applyReferenceButtonBackground(opacityBtn, R.drawable.btn_opacity_reference)
         opacityParams = createOpacityControlParams()
         addOverlayView(opacityBtn, opacityParams)
+        updateOpacityButton()
     }
 
     private fun createThemeControlParams(): WindowManager.LayoutParams {
@@ -1184,6 +1187,7 @@ class OverlayService : Service(),
         }
         if (::opacityBtn.isInitialized) {
             applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
+            updateOpacityButton()
             opacityBtn.visibility = View.VISIBLE
         }
         updateProgramButtons()
@@ -1408,6 +1412,21 @@ class OverlayService : Service(),
                 AppColorTheme.BLUE -> R.drawable.btn_theme_reference_blue
             }
         )
+    }
+
+    private fun updateOpacityButton() {
+        if (!::opacityBtn.isInitialized) return
+
+        applyReferenceButtonBackground(opacityBtn, overlayOpacityButton())
+    }
+
+    @DrawableRes
+    private fun overlayOpacityButton(): Int {
+        return when (overlayOpacityPercent) {
+            80 -> R.drawable.btn_opacity_80_reference
+            60 -> R.drawable.btn_opacity_60_reference
+            else -> R.drawable.btn_opacity_100_reference
+        }
     }
 
     private fun applyCurrentTheme() {
