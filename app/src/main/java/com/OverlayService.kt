@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
+import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -104,8 +105,11 @@ class OverlayService : Service(),
         const val OPACITY_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val SHOW_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
         const val SHOW_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
-        const val COMPACT_DIRECT_CONTROL_STROKE_WIDTH = 3
-        const val WIDE_DIRECT_CONTROL_STROKE_WIDTH = 4
+        const val SQUARE_CONTROL_STROKE_WIDTH = 3
+        const val RECTANGULAR_CONTROL_STROKE_WIDTH = 4
+        const val SQUARE_CONTROL_CORNER_RADIUS = 18f
+        const val RECTANGULAR_CONTROL_CORNER_RADIUS = 18f
+        const val SQUARE_NUMBER_TEXT_SIZE_PX = 52f
         const val TOP_CONTROL_GAP = 24
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
@@ -431,11 +435,7 @@ class OverlayService : Service(),
     private fun createButtons(){
 
         closeBtn = makeIconButton(R.drawable.ic_close, Color.RED){ stopSelf() }
-        styleDirectControl(
-            closeBtn,
-            Color.RED,
-            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-        )
+        styleSquareControl(closeBtn, Color.RED)
 
         startBtn = makeIconButton(R.drawable.ic_play, Color.WHITE){
             if (enableCapture()) {
@@ -465,20 +465,12 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        styleDirectControl(
-            resetBtn,
-            Color.YELLOW,
-            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-        )
+        styleSquareControl(resetBtn, Color.YELLOW)
 
         minimizeBtn = makeIconButton(R.drawable.ic_minimize, Color.WHITE) {
             minimizeOverlay()
         }
-        styleDirectControl(
-            minimizeBtn,
-            Color.WHITE,
-            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-        )
+        styleSquareControl(minimizeBtn, Color.WHITE)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             saveGlyphScales()
@@ -1177,16 +1169,35 @@ class OverlayService : Service(),
         setBackgroundColor(Color.TRANSPARENT)
     }
 
-    private fun styleDirectControl(
+    private fun styleSquareControl(button: TextView, contentColor: Int) {
+        styleOutlinedControl(
+            button,
+            contentColor,
+            SQUARE_CONTROL_STROKE_WIDTH,
+            SQUARE_CONTROL_CORNER_RADIUS
+        )
+    }
+
+    private fun styleRectangularControl(button: TextView, contentColor: Int) {
+        styleOutlinedControl(
+            button,
+            contentColor,
+            RECTANGULAR_CONTROL_STROKE_WIDTH,
+            RECTANGULAR_CONTROL_CORNER_RADIUS
+        )
+    }
+
+    private fun styleOutlinedControl(
         button: TextView,
         contentColor: Int,
-        strokeWidth: Int = WIDE_DIRECT_CONTROL_STROKE_WIDTH
+        strokeWidth: Int,
+        cornerRadius: Float
     ) {
         button.setTextColor(contentColor)
         button.compoundDrawableTintList = ColorStateList.valueOf(contentColor)
         button.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 18f
+            this.cornerRadius = cornerRadius
             setColor(Color.TRANSPARENT)
             setStroke(strokeWidth, AppThemeConfig.colors(currentColorTheme).outline)
         }
@@ -1466,11 +1477,7 @@ class OverlayService : Service(),
     private fun applyReferencePlayButton(active: Boolean) {
         val contentColor = if (active) Color.rgb(140, 225, 45) else Color.WHITE
         startBtn.setVectorIcon(R.drawable.ic_play, contentColor)
-        styleDirectControl(
-            startBtn,
-            contentColor,
-            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-        )
+        styleSquareControl(startBtn, contentColor)
     }
 
     private fun applyReferenceButtonBackground(
@@ -1487,13 +1494,9 @@ class OverlayService : Service(),
         val contentColor = AppThemeConfig.colors(currentColorTheme).accent
         modeBtn.setCompoundDrawables(null, null, null, null)
         modeBtn.text = glyphLimit.toString()
-        modeBtn.textSize = 40f
+        modeBtn.setTextSize(TypedValue.COMPLEX_UNIT_PX, SQUARE_NUMBER_TEXT_SIZE_PX)
         modeBtn.typeface = Typeface.DEFAULT_BOLD
-        styleDirectControl(
-            modeBtn,
-            contentColor,
-            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-        )
+        styleSquareControl(modeBtn, contentColor)
         updateFloatingButton()
     }
 
@@ -1589,7 +1592,7 @@ class OverlayService : Service(),
         showBtn.setText(
             if (showGlyphs) R.string.show_glyphs_on else R.string.show_glyphs_off
         )
-        styleDirectControl(
+        styleRectangularControl(
             showBtn,
             if (showGlyphs) Color.rgb(0, 220, 110) else Color.rgb(220, 65, 65)
         )
@@ -1656,26 +1659,14 @@ class OverlayService : Service(),
             updateShowButton()
         }
         if (::resetBtn.isInitialized) {
-            styleDirectControl(
-                resetBtn,
-                Color.YELLOW,
-                COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-            )
+            styleSquareControl(resetBtn, Color.YELLOW)
         }
         if (::minimizeBtn.isInitialized) {
-            styleDirectControl(
-                minimizeBtn,
-                Color.WHITE,
-                COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-            )
+            styleSquareControl(minimizeBtn, Color.WHITE)
         }
         if (::closeBtn.isInitialized) {
             closeBtn.setVectorIcon(R.drawable.ic_close, Color.RED)
-            styleDirectControl(
-                closeBtn,
-                Color.RED,
-                COMPACT_DIRECT_CONTROL_STROKE_WIDTH
-            )
+            styleSquareControl(closeBtn, Color.RED)
         }
         if (::startBtn.isInitialized) {
             updateStartButton(capturing)

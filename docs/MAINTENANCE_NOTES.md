@@ -22,6 +22,9 @@ Keep changes narrow and validate each UI adjustment on a real device.
 - Button artwork is PNG-based by design for the current UI phase.
 - Direct controls use a transparent background with a rounded rectangular outline whose color follows the active skin.
 - Menu controls open or collapse option groups and use a black background; only menu controls may use a black background.
+- New square controls must reuse the main PLAY overlay style: 3 px outline, 18 px corner radius, transparent fill, and skin-colored outline.
+- New rectangular controls must reuse the minimized overlay style: 4 px outline, 18 px corner radius, transparent fill for direct actions, and skin-colored outline.
+- Size icon and number content in pixels inside fixed-pixel overlay controls; using `sp` can overflow on high-density devices.
 - When replacing a button asset, keep the existing `WindowManager.LayoutParams` unless the task explicitly asks for size or position changes.
 - Consider density behavior before moving PNGs between `drawable` and `drawable-nodpi`; it can change visual scale on real devices.
 
