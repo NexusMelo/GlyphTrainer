@@ -50,7 +50,6 @@ class OverlayService : Service(),
         const val PREF_AUTO_CAPTURE = "auto_capture"
         const val PREF_FLOATING_GROUP_X = "floating_group_x"
         const val PREF_FLOATING_GROUP_Y = "floating_group_y"
-        const val PREF_OVERLAY_MINIMIZED = "overlay_minimized"
         const val PREF_OVERLAY_OPACITY_PERCENT = "overlay_opacity_percent"
         const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
         const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
@@ -61,7 +60,6 @@ class OverlayService : Service(),
         const val DEFAULT_GLYPH_LIMIT = 5
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
-        const val DEFAULT_OVERLAY_MINIMIZED = false
         const val DEFAULT_OVERLAY_OPACITY_PERCENT = 100
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
@@ -226,7 +224,6 @@ class OverlayService : Service(),
     private var replayGlyphVisible = false
     private var tutorialStepIndex = 0
     private var overlayMinimized = false
-    private var restoreMinimizedOnCreate = DEFAULT_OVERLAY_MINIMIZED
     private var creationFailed = false
     private var permissionListenerRegistered = false
 
@@ -325,7 +322,6 @@ class OverlayService : Service(),
         updateTutorialToggleButton()
         applyOverlayOpacity()
         registerOverlayPermissionListener()
-        applyRestoredOverlayState()
 
         if (TUTORIAL_ENABLED && (firstLaunchTutorialPending || showTutorialOnLaunch)) {
             mainHandler.postDelayed({ showTutorial() }, 250L)
@@ -335,6 +331,8 @@ class OverlayService : Service(),
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!canUseOverlay() || creationFailed) {
             stopSelf()
+        } else if (overlayMinimized && isOverlayReady()) {
+            restoreOverlay()
         }
 
         return START_NOT_STICKY
@@ -988,6 +986,7 @@ class OverlayService : Service(),
         v.styleMainControlButton(iconColor, 34f)
         v.setVectorIcon(iconRes, iconColor)
         v.setOnClickListener{ action() }
+        v.visibility = View.INVISIBLE
 
         val params = WindowManager.LayoutParams(
             buttonSize,buttonSize,
@@ -1085,6 +1084,10 @@ class OverlayService : Service(),
         updateOverlayView(zoomHXPlus, zoomHXPlusParams)
         updateOverlayView(zoomVMinus, zoomVMinusParams)
         updateOverlayView(zoomVPlus, zoomVPlusParams)
+
+        if (!overlayMinimized) {
+            setMainControlsVisibility(View.VISIBLE)
+        }
     }
 
     // =====================================================
@@ -1158,19 +1161,10 @@ class OverlayService : Service(),
         }
     }
 
-    private fun applyRestoredOverlayState() {
-        if (restoreMinimizedOnCreate) {
-            minimizeOverlay()
-        } else {
-            saveOverlayMinimizedState()
-        }
-    }
-
     private fun minimizeOverlay() {
         if (overlayMinimized || !::drawView.isInitialized) return
 
         overlayMinimized = true
-        saveOverlayMinimizedState()
         cancelSequencePresentation()
         disableCapture()
         drawView.resetGlyphs()
@@ -1225,7 +1219,6 @@ class OverlayService : Service(),
             opacityBtn.visibility = View.GONE
         }
         overlayMinimized = false
-        saveOverlayMinimizedState()
         updateStartButton(false)
         updateModeButton()
         updateProgramButtons()
@@ -1645,10 +1638,6 @@ class OverlayService : Service(),
             PREF_FLOATING_GROUP_Y,
             FLOATING_BUTTON_TOP
         )
-        restoreMinimizedOnCreate = preferences.getBoolean(
-            PREF_OVERLAY_MINIMIZED,
-            DEFAULT_OVERLAY_MINIMIZED
-        )
         overlayOpacityPercent = preferences.getInt(
             PREF_OVERLAY_OPACITY_PERCENT,
             DEFAULT_OVERLAY_OPACITY_PERCENT
@@ -1712,12 +1701,6 @@ class OverlayService : Service(),
         getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
             putInt(PREF_FLOATING_GROUP_X, floatingGroupX)
             putInt(PREF_FLOATING_GROUP_Y, floatingGroupY)
-        }
-    }
-
-    private fun saveOverlayMinimizedState() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putBoolean(PREF_OVERLAY_MINIMIZED, overlayMinimized)
         }
     }
 
