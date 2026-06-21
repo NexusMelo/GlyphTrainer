@@ -76,7 +76,8 @@ class OverlayService : Service(),
         const val FLOATING_MODE_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val FLOATING_MODE_GAP = 16
         const val FLOATING_CONFIG_GAP = 16
-        const val FLOATING_SKIN_GAP = 16
+        const val CONFIG_FLYOUT_STEP_X = 200
+        const val CONFIG_FLYOUT_STEP_Y = 64
         const val FLOATING_CLOSE_SIZE = 96
         const val FLOATING_CLOSE_OVERLAP = 72
         const val CAPTURE_START_DELAY_MS = 140L
@@ -95,7 +96,6 @@ class OverlayService : Service(),
         const val CONFIG_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val OPACITY_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
         const val OPACITY_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
-        const val FLOATING_OPACITY_GAP = 16
         const val TOP_CONTROL_GAP = 24
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
@@ -609,27 +609,33 @@ class OverlayService : Service(),
     }
 
     private fun floatingSkinX(): Int {
-        return floatingGroupX + (FLOATING_MODE_WIDTH - THEME_CONTENT_WIDTH) / 2
+        return floatingConfigX() - configFlyoutStepX()
     }
 
     private fun floatingSkinY(): Int {
-        return floatingConfigY() + CONFIG_CONTENT_HEIGHT + FLOATING_SKIN_GAP
+        return floatingConfigY() + CONFIG_FLYOUT_STEP_Y
     }
 
     private fun floatingOpacityX(): Int {
-        return floatingGroupX + (FLOATING_MODE_WIDTH - OPACITY_CONTENT_WIDTH) / 2
+        return floatingConfigX() - configFlyoutStepX() * 2
     }
 
     private fun floatingOpacityY(): Int {
-        return floatingSkinY() + THEME_CONTENT_HEIGHT + FLOATING_OPACITY_GAP
+        return floatingConfigY() + CONFIG_FLYOUT_STEP_Y * 2
+    }
+
+    private fun configFlyoutStepX(): Int {
+        val screenWidth = drawView.width.takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+        val availableOffset = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
+        return CONFIG_FLYOUT_STEP_X.coerceAtMost(availableOffset / 2)
     }
 
     private fun floatingGroupHeight(): Int {
         val collapsedHeight = FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP +
                 FLOATING_MODE_HEIGHT + FLOATING_CONFIG_GAP + CONFIG_CONTENT_HEIGHT
         return if (configExpanded) {
-            collapsedHeight + FLOATING_SKIN_GAP + THEME_CONTENT_HEIGHT +
-                    FLOATING_OPACITY_GAP + OPACITY_CONTENT_HEIGHT
+            collapsedHeight + CONFIG_FLYOUT_STEP_Y * 2
         } else {
             collapsedHeight
         }
@@ -942,11 +948,12 @@ class OverlayService : Service(),
         val topInset = getSystemBarSize("status_bar_height")
         val bottomInset = getSystemBarSize("navigation_bar_height")
         val maxX = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
+        val minX = if (configExpanded) configFlyoutStepX() * 2 else 0
         val minY = topInset + FLOATING_CLOSE_OVERLAP
         val maxY = (screenHeight - bottomInset - floatingGroupHeight())
             .coerceAtLeast(minY)
 
-        floatingGroupX = requestedX.coerceIn(0, maxX)
+        floatingGroupX = requestedX.coerceIn(minX, maxX)
         floatingGroupY = requestedY.coerceIn(minY, maxY)
 
         if (::floatingParams.isInitialized) {
