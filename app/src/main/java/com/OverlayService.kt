@@ -103,6 +103,8 @@ class OverlayService : Service(),
         const val OPACITY_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val SHOW_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
         const val SHOW_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
+        const val COMPACT_DIRECT_CONTROL_STROKE_WIDTH = 3
+        const val WIDE_DIRECT_CONTROL_STROKE_WIDTH = 4
         const val TOP_CONTROL_GAP = 24
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
@@ -458,12 +460,20 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        styleDirectControl(resetBtn, Color.YELLOW)
+        styleDirectControl(
+            resetBtn,
+            Color.YELLOW,
+            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+        )
 
         minimizeBtn = makeIconButton(R.drawable.ic_minimize, Color.WHITE) {
             minimizeOverlay()
         }
-        styleDirectControl(minimizeBtn, Color.WHITE)
+        styleDirectControl(
+            minimizeBtn,
+            Color.WHITE,
+            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+        )
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             saveGlyphScales()
@@ -1162,14 +1172,18 @@ class OverlayService : Service(),
         setBackgroundColor(Color.TRANSPARENT)
     }
 
-    private fun styleDirectControl(button: TextView, contentColor: Int) {
+    private fun styleDirectControl(
+        button: TextView,
+        contentColor: Int,
+        strokeWidth: Int = WIDE_DIRECT_CONTROL_STROKE_WIDTH
+    ) {
         button.setTextColor(contentColor)
         button.compoundDrawableTintList = ColorStateList.valueOf(contentColor)
         button.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 18f
             setColor(Color.TRANSPARENT)
-            setStroke(4, AppThemeConfig.colors(currentColorTheme).outline)
+            setStroke(strokeWidth, AppThemeConfig.colors(currentColorTheme).outline)
         }
     }
 
@@ -1650,10 +1664,18 @@ class OverlayService : Service(),
             updateShowButton()
         }
         if (::resetBtn.isInitialized) {
-            styleDirectControl(resetBtn, Color.YELLOW)
+            styleDirectControl(
+                resetBtn,
+                Color.YELLOW,
+                COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+            )
         }
         if (::minimizeBtn.isInitialized) {
-            styleDirectControl(minimizeBtn, Color.WHITE)
+            styleDirectControl(
+                minimizeBtn,
+                Color.WHITE,
+                COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+            )
         }
         if (::themeBtn.isInitialized) {
             updateThemeButton()
