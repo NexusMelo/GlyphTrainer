@@ -12,6 +12,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.hypot
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import com.OverlayService
 
@@ -19,7 +20,12 @@ class MainActivity : Activity() {
     private val OVERLAY_REQ_CODE = 1234
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        if (intent?.action == Intent.ACTION_MAIN) {
+            AppMode.currentMode = AppMode.Mode.PLAY
+        }
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

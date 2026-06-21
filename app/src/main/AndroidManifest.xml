@@ -21,10 +21,6 @@
             android:exported="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".MenuActivity"
             android:exported="true"
             android:theme="@style/Theme.GlyphTrainer.Splash">
 
@@ -34,6 +30,10 @@
             </intent-filter>
 
         </activity>
+
+        <activity
+            android:name=".MenuActivity"
+            android:exported="false" />
 
         <service
             android:name="com.OverlayService"
