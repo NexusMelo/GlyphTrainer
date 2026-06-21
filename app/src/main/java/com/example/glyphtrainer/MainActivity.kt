@@ -12,26 +12,24 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.hypot
-import androidx.core.view.WindowCompat
 import com.OverlayService
 
 class MainActivity : Activity() {
     private val OVERLAY_REQ_CODE = 1234
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val hasOverlayPermission = Settings.canDrawOverlays(this)
+        if (!hasOverlayPermission) {
+            setTheme(R.style.Theme_GlyphTrainer_Permission)
+        }
+
         super.onCreate(savedInstanceState)
 
         if (intent?.action == Intent.ACTION_MAIN) {
             AppMode.currentMode = AppMode.Mode.PLAY
         }
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        checkOverlayPermission()
-    }
-
-    private fun checkOverlayPermission() {
-        if (Settings.canDrawOverlays(this)) {
+        if (hasOverlayPermission) {
             startOverlay()
         } else {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
