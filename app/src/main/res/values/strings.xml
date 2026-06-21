@@ -18,6 +18,8 @@
     <string name="overlay_close">×</string>
     <string name="overlay_mode_manual">MANUAL</string>
     <string name="overlay_mode_auto">AUTO</string>
+    <string name="show_glyphs_on">SHOW ON</string>
+    <string name="show_glyphs_off">SHOW OFF</string>
     <string name="tutorial_label">Tutorial</string>
     <string name="tutorial_toggle_on_short">ON</string>
     <string name="tutorial_toggle_off_short">OFF</string>

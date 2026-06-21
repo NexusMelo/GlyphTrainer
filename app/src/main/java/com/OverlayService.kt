@@ -52,6 +52,7 @@ class OverlayService : Service(),
         const val PREF_FLOATING_GROUP_Y = "floating_group_y"
         const val PREF_FLOATING_POSITION_LAYOUT_VERSION = "floating_position_layout_version"
         const val PREF_OVERLAY_OPACITY_PERCENT = "overlay_opacity_percent"
+        const val PREF_SHOW_GLYPHS = "show_glyphs"
         const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
         const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
         const val PREF_PREMIUM_ENABLED = "premium_enabled"
@@ -62,6 +63,7 @@ class OverlayService : Service(),
         const val DEFAULT_SCALE = 1f
         const val DEFAULT_AUTO_CAPTURE = false
         const val DEFAULT_OVERLAY_OPACITY_PERCENT = 100
+        const val DEFAULT_SHOW_GLYPHS = true
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
         const val FLOATING_POSITION_LAYOUT_VERSION = 1
@@ -99,6 +101,8 @@ class OverlayService : Service(),
         const val CONFIG_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val OPACITY_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
         const val OPACITY_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
+        const val SHOW_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
+        const val SHOW_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val TOP_CONTROL_GAP = 24
         const val TUTORIAL_CARD_WIDTH = 560
         const val TUTORIAL_CARD_HEIGHT = 300
@@ -114,6 +118,7 @@ class OverlayService : Service(),
     private lateinit var startBtn: TextView
     private lateinit var modeBtn: TextView
     private lateinit var resetBtn: TextView
+    private lateinit var minimizeBtn: TextView
     private lateinit var floatingBtn: TextView
     private lateinit var floatingModeBtn: TextView
     private lateinit var floatingCloseBtn: TextView
@@ -121,6 +126,7 @@ class OverlayService : Service(),
     private lateinit var configBtn: TextView
     private lateinit var themeBtn: TextView
     private lateinit var opacityBtn: TextView
+    private lateinit var showBtn: TextView
     private lateinit var tutorialLayer: FrameLayout
     private lateinit var tutorialPointer: TextView
     private lateinit var tutorialCard: LinearLayout
@@ -144,6 +150,7 @@ class OverlayService : Service(),
     private lateinit var startParams: WindowManager.LayoutParams
     private lateinit var modeParams: WindowManager.LayoutParams
     private lateinit var resetParams: WindowManager.LayoutParams
+    private lateinit var minimizeParams: WindowManager.LayoutParams
     private lateinit var floatingParams: WindowManager.LayoutParams
     private lateinit var floatingModeParams: WindowManager.LayoutParams
     private lateinit var floatingCloseParams: WindowManager.LayoutParams
@@ -151,6 +158,7 @@ class OverlayService : Service(),
     private lateinit var configParams: WindowManager.LayoutParams
     private lateinit var themeParams: WindowManager.LayoutParams
     private lateinit var opacityParams: WindowManager.LayoutParams
+    private lateinit var showParams: WindowManager.LayoutParams
     private lateinit var tutorialLayerParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
@@ -178,7 +186,9 @@ class OverlayService : Service(),
     }
     private val showGlyphSequenceRunnable = Runnable {
         if (!capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
-            drawView.showCompletedSequence()
+            if (showGlyphs) {
+                drawView.showCompletedSequence()
+            }
             startReplay()
         }
     }
@@ -204,7 +214,9 @@ class OverlayService : Service(),
 
             if (replayIndex >= glyphLimit) return
 
-            drawView.showReplayGlyph(replayIndex)
+            if (showGlyphs) {
+                drawView.showReplayGlyph(replayIndex)
+            }
             replayIndex++
             replayGlyphVisible = true
             mainHandler.postDelayed(this, REPLAY_GLYPH_DURATION_MS)
@@ -223,6 +235,7 @@ class OverlayService : Service(),
     private var showTutorialOnLaunch = DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
     private var currentColorTheme = AppThemeConfig.DEFAULT_THEME
     private var overlayOpacityPercent = DEFAULT_OVERLAY_OPACITY_PERCENT
+    private var showGlyphs = DEFAULT_SHOW_GLYPHS
     private var firstLaunchTutorialPending = false
     private var capturing = false
     private var replayIndex = 0
@@ -316,6 +329,9 @@ class OverlayService : Service(),
         if (creationFailed) return
 
         createOpacityControl()
+        if (creationFailed) return
+
+        createShowControl()
         if (creationFailed) return
 
         if (TUTORIAL_ENABLED) {
@@ -438,7 +454,14 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        applyReferenceButtonBackground(resetBtn, R.drawable.btn_reset_reference)
+        resetBtn.background = ContextCompat.getDrawable(this, R.drawable.bg_main_control)
+        resetBtn.setVectorIcon(R.drawable.ic_reset, Color.YELLOW)
+
+        minimizeBtn = makeIconButton(R.drawable.ic_minimize, Color.WHITE) {
+            minimizeOverlay()
+        }
+        minimizeBtn.background = ContextCompat.getDrawable(this, R.drawable.bg_main_control)
+        minimizeBtn.setVectorIcon(R.drawable.ic_minimize, Color.WHITE)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             saveGlyphScales()
@@ -627,6 +650,14 @@ class OverlayService : Service(),
         return floatingSkinY() + THEME_CONTENT_HEIGHT + CONFIG_SUBMENU_VERTICAL_GAP
     }
 
+    private fun floatingShowX(): Int {
+        return floatingOpacityX()
+    }
+
+    private fun floatingShowY(): Int {
+        return floatingOpacityY() + OPACITY_CONTENT_HEIGHT + CONFIG_SUBMENU_VERTICAL_GAP
+    }
+
     private fun configFlyoutStepX(): Int {
         val screenWidth = drawView.width.takeIf { it > 0 }
             ?: resources.displayMetrics.widthPixels
@@ -642,8 +673,7 @@ class OverlayService : Service(),
     private fun floatingGroupHeight(): Int {
         val collapsedHeight = collapsedFloatingGroupHeight()
         return if (configExpanded) {
-            collapsedHeight + CONFIG_FLYOUT_STEP_Y +
-                    CONFIG_SUBMENU_VERTICAL_GAP + OPACITY_CONTENT_HEIGHT
+            floatingShowY() - floatingGroupY + SHOW_CONTENT_HEIGHT
         } else {
             collapsedHeight
         }
@@ -864,6 +894,26 @@ class OverlayService : Service(),
         updateOpacityButton()
     }
 
+    private fun createShowControl() {
+        showBtn = TutorialHudUi.makeControlButton(this).apply {
+            visibility = View.GONE
+            setOnClickListener {
+                showGlyphs = !showGlyphs
+                saveShowGlyphs()
+                if (!showGlyphs && ::drawView.isInitialized) {
+                    drawView.hideCompletedSequence()
+                    drawView.clearReplayGlyph()
+                    drawView.clearGoMessage()
+                }
+                updateShowButton()
+            }
+            setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
+        }
+        showParams = createShowControlParams()
+        addOverlayView(showBtn, showParams)
+        updateShowButton()
+    }
+
     private fun createThemeControlParams(): WindowManager.LayoutParams {
         return createHudControlParams(
             THEME_CONTENT_WIDTH,
@@ -1011,6 +1061,11 @@ class OverlayService : Service(),
             opacityParams.y = floatingOpacityY()
             updateOverlayView(opacityBtn, opacityParams)
         }
+        if (::showParams.isInitialized) {
+            showParams.x = floatingShowX()
+            showParams.y = floatingShowY()
+            updateOverlayView(showBtn, showParams)
+        }
     }
 
     @SuppressLint("DiscouragedApi")
@@ -1048,6 +1103,7 @@ class OverlayService : Service(),
             !::startParams.isInitialized -> startParams=params
             !::modeParams.isInitialized -> modeParams=params
             !::resetParams.isInitialized -> resetParams=params
+            !::minimizeParams.isInitialized -> minimizeParams=params
             !::zoomHXPlusParams.isInitialized -> zoomHXPlusParams=params
             !::zoomHXMinusParams.isInitialized -> zoomHXMinusParams=params
             !::zoomVPlusParams.isInitialized -> zoomVPlusParams=params
@@ -1085,6 +1141,7 @@ class OverlayService : Service(),
             !::startParams.isInitialized -> startParams=params
             !::modeParams.isInitialized -> modeParams=params
             !::resetParams.isInitialized -> resetParams=params
+            !::minimizeParams.isInitialized -> minimizeParams=params
             !::zoomHXPlusParams.isInitialized -> zoomHXPlusParams=params
             !::zoomHXMinusParams.isInitialized -> zoomHXMinusParams=params
             !::zoomVPlusParams.isInitialized -> zoomVPlusParams=params
@@ -1124,7 +1181,7 @@ class OverlayService : Service(),
 
     private fun positionOverlayControls(area: RectF) {
         val screenWidth = drawView.width
-        val controlsWidth = buttonSize * 4 + gap * 3
+        val controlsWidth = buttonSize * 5 + gap * 4
         val controlsStartX = (screenWidth - controlsWidth) / 2
         val controlsY = fixedControlsY ?: (
             area.top - buttonSize - 70f
@@ -1138,13 +1195,16 @@ class OverlayService : Service(),
         startParams.y = controlsY
         resetParams.x = controlsStartX + (buttonSize + gap) * 2
         resetParams.y = controlsY
-        closeParams.x = controlsStartX + (buttonSize + gap) * 3
+        minimizeParams.x = controlsStartX + (buttonSize + gap) * 3
+        minimizeParams.y = controlsY
+        closeParams.x = controlsStartX + (buttonSize + gap) * 4
         closeParams.y = controlsY
 
         updateOverlayView(closeBtn, closeParams)
         updateOverlayView(startBtn, startParams)
         updateOverlayView(modeBtn, modeParams)
         updateOverlayView(resetBtn, resetParams)
+        updateOverlayView(minimizeBtn, minimizeParams)
         val centerY = (drawView.height / 2) - 200
         val spacing = 220
         val startX = (drawView.width / 2) - (spacing * 2)
@@ -1215,7 +1275,9 @@ class OverlayService : Service(),
         disableCapture()
         updateStartButton(false)
         cancelSequencePresentation()
-        drawView.showGoMessage()
+        if (showGlyphs) {
+            drawView.showGoMessage()
+        }
         mainHandler.postDelayed(showGlyphSequenceRunnable, REPLAY_PREPARE_DELAY_MS)
     }
 
@@ -1258,6 +1320,7 @@ class OverlayService : Service(),
         }
         if (::themeBtn.isInitialized) updateThemeButton()
         if (::opacityBtn.isInitialized) updateOpacityButton()
+        if (::showBtn.isInitialized) updateShowButton()
         applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
         if (::configBtn.isInitialized) configBtn.visibility = View.VISIBLE
         updateConfigControlsVisibility()
@@ -1295,6 +1358,9 @@ class OverlayService : Service(),
         if (::opacityBtn.isInitialized) {
             opacityBtn.visibility = View.GONE
         }
+        if (::showBtn.isInitialized) {
+            showBtn.visibility = View.GONE
+        }
         configExpanded = false
         if (::configBtn.isInitialized) {
             configBtn.visibility = View.GONE
@@ -1324,6 +1390,7 @@ class OverlayService : Service(),
         startBtn.visibility = visibility
         modeBtn.visibility = visibility
         resetBtn.visibility = visibility
+        minimizeBtn.visibility = visibility
     }
 
     private fun nextOverlayOpacityPercent(): Int {
@@ -1350,6 +1417,9 @@ class OverlayService : Service(),
         }
         if (::resetBtn.isInitialized) {
             resetBtn.alpha = overlayAlpha
+        }
+        if (::minimizeBtn.isInitialized) {
+            minimizeBtn.alpha = overlayAlpha
         }
     }
 
@@ -1494,10 +1564,35 @@ class OverlayService : Service(),
         applyReferenceButtonBackground(opacityBtn, overlayOpacityButton())
     }
 
+    private fun updateShowButton() {
+        if (!::showBtn.isInitialized) return
+
+        showBtn.setText(
+            if (showGlyphs) R.string.show_glyphs_on else R.string.show_glyphs_off
+        )
+        TutorialHudUi.styleSwitch(
+            showBtn,
+            AppThemeConfig.colors(currentColorTheme),
+            showGlyphs
+        )
+    }
+
+    private fun createShowControlParams(): WindowManager.LayoutParams {
+        return createHudControlParams(
+            SHOW_CONTENT_WIDTH,
+            SHOW_CONTENT_HEIGHT,
+            floatingShowX(),
+            floatingShowY()
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+        }
+    }
+
     private fun updateConfigControlsVisibility() {
         val visibility = if (overlayMinimized && configExpanded) View.VISIBLE else View.GONE
         if (::themeBtn.isInitialized) themeBtn.visibility = visibility
         if (::opacityBtn.isInitialized) opacityBtn.visibility = visibility
+        if (::showBtn.isInitialized) showBtn.visibility = visibility
     }
 
     @DrawableRes
@@ -1538,6 +1633,9 @@ class OverlayService : Service(),
         }
         if (::tutorialToggleBtn.isInitialized) {
             updateTutorialToggleButton()
+        }
+        if (::showBtn.isInitialized) {
+            updateShowButton()
         }
         if (::themeBtn.isInitialized) {
             updateThemeButton()
@@ -1736,6 +1834,7 @@ class OverlayService : Service(),
             DEFAULT_OVERLAY_OPACITY_PERCENT
         ).takeIf { it == 100 || it == 80 || it == 60 }
             ?: DEFAULT_OVERLAY_OPACITY_PERCENT
+        showGlyphs = preferences.getBoolean(PREF_SHOW_GLYPHS, DEFAULT_SHOW_GLYPHS)
         overlayMinimized = false
 
         preferences.edit {
@@ -1808,6 +1907,12 @@ class OverlayService : Service(),
         }
     }
 
+    private fun saveShowGlyphs() {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(PREF_SHOW_GLYPHS, showGlyphs)
+        }
+    }
+
     // =====================================================
     // DESTROY
     // =====================================================
@@ -1822,6 +1927,7 @@ class OverlayService : Service(),
         if (::startBtn.isInitialized) removeOverlayView(startBtn)
         if (::modeBtn.isInitialized) removeOverlayView(modeBtn)
         if (::resetBtn.isInitialized) removeOverlayView(resetBtn)
+        if (::minimizeBtn.isInitialized) removeOverlayView(minimizeBtn)
         if (::floatingBtn.isInitialized) removeOverlayView(floatingBtn)
         if (::floatingModeBtn.isInitialized) removeOverlayView(floatingModeBtn)
         if (::floatingCloseBtn.isInitialized) removeOverlayView(floatingCloseBtn)
@@ -1829,6 +1935,7 @@ class OverlayService : Service(),
         if (::configBtn.isInitialized) removeOverlayView(configBtn)
         if (::themeBtn.isInitialized) removeOverlayView(themeBtn)
         if (::opacityBtn.isInitialized) removeOverlayView(opacityBtn)
+        if (::showBtn.isInitialized) removeOverlayView(showBtn)
         if (::tutorialLayer.isInitialized) removeOverlayView(tutorialLayer)
         if (::zoomHXPlus.isInitialized) removeOverlayView(zoomHXPlus)
         if (::zoomHXMinus.isInitialized) removeOverlayView(zoomHXMinus)
@@ -1894,6 +2001,7 @@ class OverlayService : Service(),
                 ::startBtn.isInitialized && startBtn.isAttachedToWindow &&
                 ::modeBtn.isInitialized && modeBtn.isAttachedToWindow &&
                 ::resetBtn.isInitialized && resetBtn.isAttachedToWindow &&
+                ::minimizeBtn.isInitialized && minimizeBtn.isAttachedToWindow &&
                 ::zoomHXPlus.isInitialized && zoomHXPlus.isAttachedToWindow &&
                 ::zoomHXMinus.isInitialized && zoomHXMinus.isAttachedToWindow &&
                 ::zoomVPlus.isInitialized && zoomVPlus.isAttachedToWindow &&
