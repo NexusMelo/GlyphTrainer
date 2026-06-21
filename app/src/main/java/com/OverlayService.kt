@@ -22,6 +22,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.graphics.Color
+import android.graphics.Typeface
 import android.view.Gravity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -430,7 +431,11 @@ class OverlayService : Service(),
     private fun createButtons(){
 
         closeBtn = makeIconButton(R.drawable.ic_close, Color.RED){ stopSelf() }
-        applyReferenceButtonBackground(closeBtn, R.drawable.btn_close_reference)
+        styleDirectControl(
+            closeBtn,
+            Color.RED,
+            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+        )
 
         startBtn = makeIconButton(R.drawable.ic_play, Color.WHITE){
             if (enableCapture()) {
@@ -1459,13 +1464,12 @@ class OverlayService : Service(),
     }
 
     private fun applyReferencePlayButton(active: Boolean) {
-        applyReferenceButtonBackground(
+        val contentColor = if (active) Color.rgb(140, 225, 45) else Color.WHITE
+        startBtn.setVectorIcon(R.drawable.ic_play, contentColor)
+        styleDirectControl(
             startBtn,
-            if (active) {
-                R.drawable.btn_play_reference_active
-            } else {
-                R.drawable.btn_play_reference_inactive
-            }
+            contentColor,
+            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
         )
     }
 
@@ -1480,7 +1484,16 @@ class OverlayService : Service(),
     }
 
     private fun updateModeButton(){
-        applyReferenceButtonBackground(modeBtn, glyphLimitMainButton())
+        val contentColor = AppThemeConfig.colors(currentColorTheme).accent
+        modeBtn.setCompoundDrawables(null, null, null, null)
+        modeBtn.text = glyphLimit.toString()
+        modeBtn.textSize = 40f
+        modeBtn.typeface = Typeface.DEFAULT_BOLD
+        styleDirectControl(
+            modeBtn,
+            contentColor,
+            COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+        )
         updateFloatingButton()
     }
 
@@ -1516,27 +1529,6 @@ class OverlayService : Service(),
             3 -> R.drawable.ic_digit_3
             4 -> R.drawable.ic_digit_4
             else -> R.drawable.ic_digit_5
-        }
-    }
-
-    @DrawableRes
-    private fun glyphLimitMainButton(): Int {
-        return when (currentColorTheme) {
-            AppColorTheme.STANDARD -> when (glyphLimit) {
-                3 -> R.drawable.btn_mode_3_reference
-                4 -> R.drawable.btn_mode_4_reference
-                else -> R.drawable.btn_mode_5_reference
-            }
-            AppColorTheme.GREEN -> when (glyphLimit) {
-                3 -> R.drawable.btn_mode_3_green_reference
-                4 -> R.drawable.btn_mode_4_green_reference
-                else -> R.drawable.btn_mode_5_green_reference
-            }
-            AppColorTheme.BLUE -> when (glyphLimit) {
-                3 -> R.drawable.btn_mode_3_blue_reference
-                4 -> R.drawable.btn_mode_4_blue_reference
-                else -> R.drawable.btn_mode_5_blue_reference
-            }
         }
     }
 
@@ -1676,6 +1668,17 @@ class OverlayService : Service(),
                 Color.WHITE,
                 COMPACT_DIRECT_CONTROL_STROKE_WIDTH
             )
+        }
+        if (::closeBtn.isInitialized) {
+            closeBtn.setVectorIcon(R.drawable.ic_close, Color.RED)
+            styleDirectControl(
+                closeBtn,
+                Color.RED,
+                COMPACT_DIRECT_CONTROL_STROKE_WIDTH
+            )
+        }
+        if (::startBtn.isInitialized) {
+            updateStartButton(capturing)
         }
         if (::themeBtn.isInitialized) {
             updateThemeButton()
