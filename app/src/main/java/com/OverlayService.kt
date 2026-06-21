@@ -186,9 +186,9 @@ class OverlayService : Service(),
     }
     private val showGlyphSequenceRunnable = Runnable {
         if (!capturing && canUseOverlay() && isPlayMode() && isOverlayReady()) {
-            if (showGlyphs) {
-                drawView.showCompletedSequence()
-            }
+            if (!showGlyphs) return@Runnable
+
+            drawView.showCompletedSequence()
             startReplay()
         }
     }
@@ -204,7 +204,11 @@ class OverlayService : Service(),
                 replayGlyphVisible = false
 
                 if (replayIndex >= glyphLimit) {
-                    minimizeOverlay()
+                    if (showGlyphs) {
+                        minimizeOverlay()
+                    } else {
+                        cancelReplay()
+                    }
                     return
                 }
 
@@ -454,14 +458,12 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        resetBtn.background = ContextCompat.getDrawable(this, R.drawable.bg_main_control)
-        resetBtn.setVectorIcon(R.drawable.ic_reset, Color.YELLOW)
+        styleDirectControl(resetBtn, Color.YELLOW)
 
         minimizeBtn = makeIconButton(R.drawable.ic_minimize, Color.WHITE) {
             minimizeOverlay()
         }
-        minimizeBtn.background = ContextCompat.getDrawable(this, R.drawable.bg_main_control)
-        minimizeBtn.setVectorIcon(R.drawable.ic_minimize, Color.WHITE)
+        styleDirectControl(minimizeBtn, Color.WHITE)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             saveGlyphScales()
@@ -1160,6 +1162,17 @@ class OverlayService : Service(),
         setBackgroundColor(Color.TRANSPARENT)
     }
 
+    private fun styleDirectControl(button: TextView, contentColor: Int) {
+        button.setTextColor(contentColor)
+        button.compoundDrawableTintList = ColorStateList.valueOf(contentColor)
+        button.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 18f
+            setColor(Color.TRANSPARENT)
+            setStroke(4, AppThemeConfig.colors(currentColorTheme).outline)
+        }
+    }
+
     private fun TextView.setVectorIcon(@DrawableRes iconRes: Int, tintColor: Int) {
         text = null
         val icon = ContextCompat.getDrawable(this@OverlayService, iconRes)?.mutate()
@@ -1277,8 +1290,8 @@ class OverlayService : Service(),
         cancelSequencePresentation()
         if (showGlyphs) {
             drawView.showGoMessage()
+            mainHandler.postDelayed(showGlyphSequenceRunnable, REPLAY_PREPARE_DELAY_MS)
         }
-        mainHandler.postDelayed(showGlyphSequenceRunnable, REPLAY_PREPARE_DELAY_MS)
     }
 
     private fun startReplay() {
@@ -1570,10 +1583,9 @@ class OverlayService : Service(),
         showBtn.setText(
             if (showGlyphs) R.string.show_glyphs_on else R.string.show_glyphs_off
         )
-        TutorialHudUi.styleSwitch(
+        styleDirectControl(
             showBtn,
-            AppThemeConfig.colors(currentColorTheme),
-            showGlyphs
+            if (showGlyphs) Color.rgb(0, 220, 110) else Color.rgb(220, 65, 65)
         )
     }
 
@@ -1636,6 +1648,12 @@ class OverlayService : Service(),
         }
         if (::showBtn.isInitialized) {
             updateShowButton()
+        }
+        if (::resetBtn.isInitialized) {
+            styleDirectControl(resetBtn, Color.YELLOW)
+        }
+        if (::minimizeBtn.isInitialized) {
+            styleDirectControl(minimizeBtn, Color.WHITE)
         }
         if (::themeBtn.isInitialized) {
             updateThemeButton()
