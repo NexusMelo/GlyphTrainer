@@ -50,6 +50,7 @@ class OverlayService : Service(),
         const val PREF_AUTO_CAPTURE = "auto_capture"
         const val PREF_FLOATING_GROUP_X = "floating_group_x"
         const val PREF_FLOATING_GROUP_Y = "floating_group_y"
+        const val PREF_FLOATING_POSITION_LAYOUT_VERSION = "floating_position_layout_version"
         const val PREF_OVERLAY_OPACITY_PERCENT = "overlay_opacity_percent"
         const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
         const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
@@ -63,6 +64,7 @@ class OverlayService : Service(),
         const val DEFAULT_OVERLAY_OPACITY_PERCENT = 100
         const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
         const val DEFAULT_PREMIUM_ENABLED = false
+        const val FLOATING_POSITION_LAYOUT_VERSION = 1
         const val FLOATING_BUTTON_SIZE = 256
         const val FLOATING_CONTENT_BUTTON_SIZE = 224
         const val FLOATING_BUTTON_MARGIN = 24
@@ -78,6 +80,7 @@ class OverlayService : Service(),
         const val FLOATING_CONFIG_GAP = 16
         const val CONFIG_FLYOUT_STEP_X = 200
         const val CONFIG_FLYOUT_STEP_Y = 64
+        const val CONFIG_SUBMENU_VERTICAL_GAP = 16
         const val FLOATING_CLOSE_SIZE = 96
         const val FLOATING_CLOSE_OVERLAP = 72
         const val CAPTURE_START_DELAY_MS = 140L
@@ -617,28 +620,48 @@ class OverlayService : Service(),
     }
 
     private fun floatingOpacityX(): Int {
-        return floatingConfigX() - configFlyoutStepX() * 2
+        return floatingSkinX()
     }
 
     private fun floatingOpacityY(): Int {
-        return floatingConfigY() + CONFIG_FLYOUT_STEP_Y * 2
+        return floatingSkinY() + THEME_CONTENT_HEIGHT + CONFIG_SUBMENU_VERTICAL_GAP
     }
 
     private fun configFlyoutStepX(): Int {
         val screenWidth = drawView.width.takeIf { it > 0 }
             ?: resources.displayMetrics.widthPixels
         val availableOffset = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
-        return CONFIG_FLYOUT_STEP_X.coerceAtMost(availableOffset / 2)
+        return CONFIG_FLYOUT_STEP_X.coerceAtMost(availableOffset)
+    }
+
+    private fun collapsedFloatingGroupHeight(): Int {
+        return FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT +
+                FLOATING_CONFIG_GAP + CONFIG_CONTENT_HEIGHT
     }
 
     private fun floatingGroupHeight(): Int {
-        val collapsedHeight = FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP +
-                FLOATING_MODE_HEIGHT + FLOATING_CONFIG_GAP + CONFIG_CONTENT_HEIGHT
+        val collapsedHeight = collapsedFloatingGroupHeight()
         return if (configExpanded) {
-            collapsedHeight + CONFIG_FLYOUT_STEP_Y * 2
+            collapsedHeight + CONFIG_FLYOUT_STEP_Y +
+                    CONFIG_SUBMENU_VERTICAL_GAP + OPACITY_CONTENT_HEIGHT
         } else {
             collapsedHeight
         }
+    }
+
+    private fun defaultFloatingGroupX(): Int {
+        val screenWidth = resources.displayMetrics.widthPixels
+        return (screenWidth - FLOATING_MODE_WIDTH - FLOATING_BUTTON_MARGIN).coerceAtLeast(0)
+    }
+
+    private fun defaultFloatingGroupY(): Int {
+        val screenHeight = resources.displayMetrics.heightPixels
+        val topInset = getSystemBarSize("status_bar_height")
+        val bottomInset = getSystemBarSize("navigation_bar_height")
+        val availableHeight = (screenHeight - topInset - bottomInset).coerceAtLeast(0)
+        val visibleGroupHeight = FLOATING_CLOSE_OVERLAP + collapsedFloatingGroupHeight()
+        val visibleTop = topInset + ((availableHeight - visibleGroupHeight) / 2).coerceAtLeast(0)
+        return visibleTop + FLOATING_CLOSE_OVERLAP
     }
 
     private fun createTutorialControls() {
@@ -948,7 +971,7 @@ class OverlayService : Service(),
         val topInset = getSystemBarSize("status_bar_height")
         val bottomInset = getSystemBarSize("navigation_bar_height")
         val maxX = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
-        val minX = if (configExpanded) configFlyoutStepX() * 2 else 0
+        val minX = if (configExpanded) configFlyoutStepX() else 0
         val minY = topInset + FLOATING_CLOSE_OVERLAP
         val maxY = (screenHeight - bottomInset - floatingGroupHeight())
             .coerceAtLeast(minY)
@@ -1694,14 +1717,20 @@ class OverlayService : Service(),
             PREF_AUTO_CAPTURE,
             DEFAULT_AUTO_CAPTURE
         )
-        floatingGroupX = preferences.getInt(
-            PREF_FLOATING_GROUP_X,
-            FLOATING_BUTTON_MARGIN
-        )
-        floatingGroupY = preferences.getInt(
-            PREF_FLOATING_GROUP_Y,
-            FLOATING_BUTTON_TOP
-        )
+        val resetFloatingPosition = preferences.getInt(
+            PREF_FLOATING_POSITION_LAYOUT_VERSION,
+            0
+        ) < FLOATING_POSITION_LAYOUT_VERSION
+        floatingGroupX = if (resetFloatingPosition) {
+            defaultFloatingGroupX()
+        } else {
+            preferences.getInt(PREF_FLOATING_GROUP_X, defaultFloatingGroupX())
+        }
+        floatingGroupY = if (resetFloatingPosition) {
+            defaultFloatingGroupY()
+        } else {
+            preferences.getInt(PREF_FLOATING_GROUP_Y, defaultFloatingGroupY())
+        }
         overlayOpacityPercent = preferences.getInt(
             PREF_OVERLAY_OPACITY_PERCENT,
             DEFAULT_OVERLAY_OPACITY_PERCENT
@@ -1710,6 +1739,11 @@ class OverlayService : Service(),
         overlayMinimized = false
 
         preferences.edit {
+            if (resetFloatingPosition) {
+                putInt(PREF_FLOATING_GROUP_X, floatingGroupX)
+                putInt(PREF_FLOATING_GROUP_Y, floatingGroupY)
+                putInt(PREF_FLOATING_POSITION_LAYOUT_VERSION, FLOATING_POSITION_LAYOUT_VERSION)
+            }
             if (firstLaunchTutorialPending) {
                 putBoolean(PREF_TUTORIAL_INITIALIZED, true)
                 putBoolean(PREF_SHOW_TUTORIAL_ON_LAUNCH, DEFAULT_SHOW_TUTORIAL_ON_LAUNCH)
