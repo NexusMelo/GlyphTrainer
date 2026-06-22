@@ -46,24 +46,6 @@ class OverlayService : Service(),
     private companion object {
         const val LOG_TAG = "GlyphTrainerOverlay"
         const val TUTORIAL_ENABLED = false
-        const val FLOATING_BUTTON_SIZE = 256
-        const val FLOATING_CONTENT_BUTTON_SIZE = 224
-        const val FLOATING_BUTTON_MARGIN = 24
-        const val FLOATING_BUTTON_TOP = 180
-        const val FLOATING_MODE_WIDTH = 256
-        const val FLOATING_MODE_HEIGHT = 95
-        const val FLOATING_SECONDARY_WIDTH = 256
-        const val FLOATING_SECONDARY_HEIGHT = 95
-        const val FLOATING_MODE_MANUAL_WIDTH = FLOATING_SECONDARY_WIDTH
-        const val FLOATING_MODE_AUTO_WIDTH = FLOATING_SECONDARY_WIDTH
-        const val FLOATING_MODE_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
-        const val FLOATING_MODE_GAP = 16
-        const val FLOATING_CONFIG_GAP = 16
-        const val CONFIG_FLYOUT_STEP_X = 200
-        const val CONFIG_FLYOUT_STEP_Y = 64
-        const val CONFIG_SUBMENU_VERTICAL_GAP = 16
-        const val FLOATING_CLOSE_SIZE = 96
-        const val FLOATING_CLOSE_OVERLAP = 72
         const val CAPTURE_START_DELAY_MS = 140L
         const val GLYPH_DISPLAY_DELAY_MS = 2_000L
         const val REPLAY_START_DELAY_MS = 1_000L
@@ -74,14 +56,6 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
-        const val THEME_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
-        const val THEME_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
-        const val CONFIG_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
-        const val CONFIG_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
-        const val OPACITY_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
-        const val OPACITY_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
-        const val SHOW_CONTENT_WIDTH = FLOATING_SECONDARY_WIDTH
-        const val SHOW_CONTENT_HEIGHT = FLOATING_SECONDARY_HEIGHT
         const val SQUARE_CONTROL_STROKE_WIDTH = 3
         const val RECTANGULAR_CONTROL_STROKE_WIDTH = 4
         const val SQUARE_CONTROL_CORNER_RADIUS = 18f
@@ -152,8 +126,8 @@ class OverlayService : Service(),
         ViewConfiguration.get(this).scaledTouchSlop
     }
     private var fixedControlsY: Int? = null
-    private var floatingGroupX = FLOATING_BUTTON_MARGIN
-    private var floatingGroupY = FLOATING_BUTTON_TOP
+    private var floatingGroupX = OverlayFloatingGeometry.BUTTON_MARGIN
+    private var floatingGroupY = OverlayFloatingGeometry.BUTTON_TOP
     private var configExpanded = false
     private var floatingDragStartRawX = 0f
     private var floatingDragStartRawY = 0f
@@ -300,9 +274,10 @@ class OverlayService : Service(),
         }
 
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        val defaultFloatingPosition = defaultFloatingGroupPosition()
         val restoredState = overlayPreferences.restore(
-            defaultFloatingGroupX = defaultFloatingGroupX(),
-            defaultFloatingGroupY = defaultFloatingGroupY()
+            defaultFloatingGroupX = defaultFloatingPosition.x,
+            defaultFloatingGroupY = defaultFloatingPosition.y
         )
         firstLaunchTutorialPending = restoredState.firstLaunchTutorialPending
         showTutorialOnLaunch = restoredState.showTutorialOnLaunch
@@ -493,6 +468,8 @@ class OverlayService : Service(),
 
     @SuppressLint("ClickableViewAccessibility")
     private fun createFloatingControls() {
+        val floatingLayout = currentFloatingLayout()
+
         floatingBtn = TextView(this).apply {
             styleFloatingRoundButton(
                 textSize = 42f,
@@ -507,16 +484,16 @@ class OverlayService : Service(),
         }
 
         floatingParams = WindowManager.LayoutParams(
-            FLOATING_CONTENT_BUTTON_SIZE,
-            FLOATING_CONTENT_BUTTON_SIZE,
+            OverlayFloatingGeometry.CONTENT_BUTTON_SIZE,
+            OverlayFloatingGeometry.CONTENT_BUTTON_SIZE,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = floatingButtonX()
-            y = floatingButtonY()
+            x = floatingLayout.button.x
+            y = floatingLayout.button.y
         }
 
         addOverlayView(floatingBtn, floatingParams)
@@ -536,16 +513,16 @@ class OverlayService : Service(),
         }
 
         floatingCloseParams = WindowManager.LayoutParams(
-            FLOATING_CLOSE_SIZE,
-            FLOATING_CLOSE_SIZE,
+            OverlayFloatingGeometry.CLOSE_SIZE,
+            OverlayFloatingGeometry.CLOSE_SIZE,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = floatingGroupX
-            y = floatingGroupY - FLOATING_CLOSE_OVERLAP
+            x = floatingLayout.close.x
+            y = floatingLayout.close.y
         }
 
         addOverlayView(floatingCloseBtn, floatingCloseParams)
@@ -562,16 +539,16 @@ class OverlayService : Service(),
         }
 
         floatingModeParams = WindowManager.LayoutParams(
-            floatingModeWidth(),
-            FLOATING_MODE_CONTENT_HEIGHT,
+            floatingLayout.modeWidth,
+            OverlayFloatingGeometry.MODE_CONTENT_HEIGHT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = floatingModeX()
-            y = floatingModeY()
+            x = floatingLayout.mode.x
+            y = floatingLayout.mode.y
         }
 
         addOverlayView(floatingModeBtn, floatingModeParams)
@@ -606,94 +583,24 @@ class OverlayService : Service(),
         includeFontPadding = false
     }
 
-    private fun floatingButtonX(): Int {
-        return floatingGroupX + (FLOATING_MODE_WIDTH - FLOATING_CONTENT_BUTTON_SIZE) / 2
-    }
-
-    private fun floatingButtonY(): Int {
-        return floatingGroupY + (FLOATING_BUTTON_SIZE - FLOATING_CONTENT_BUTTON_SIZE) / 2
-    }
-
-    private fun floatingModeWidth(): Int {
-        return if (autoCaptureEnabled) FLOATING_MODE_AUTO_WIDTH else FLOATING_MODE_MANUAL_WIDTH
-    }
-
-    private fun floatingModeX(): Int {
-        return floatingGroupX + (FLOATING_MODE_WIDTH - floatingModeWidth()) / 2
-    }
-
-    private fun floatingModeY(): Int {
-        return floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP +
-                (FLOATING_MODE_HEIGHT - FLOATING_MODE_CONTENT_HEIGHT) / 2
-    }
-
-    private fun floatingConfigX(): Int {
-        return floatingGroupX + (FLOATING_MODE_WIDTH - CONFIG_CONTENT_WIDTH) / 2
-    }
-
-    private fun floatingConfigY(): Int {
-        return floatingGroupY + FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP +
-                FLOATING_MODE_HEIGHT + FLOATING_CONFIG_GAP
-    }
-
-    private fun floatingSkinX(): Int {
-        return floatingConfigX() - configFlyoutStepX()
-    }
-
-    private fun floatingSkinY(): Int {
-        return floatingConfigY() + CONFIG_FLYOUT_STEP_Y
-    }
-
-    private fun floatingOpacityX(): Int {
-        return floatingSkinX()
-    }
-
-    private fun floatingOpacityY(): Int {
-        return floatingSkinY() + THEME_CONTENT_HEIGHT + CONFIG_SUBMENU_VERTICAL_GAP
-    }
-
-    private fun floatingShowX(): Int {
-        return floatingOpacityX()
-    }
-
-    private fun floatingShowY(): Int {
-        return floatingOpacityY() + OPACITY_CONTENT_HEIGHT + CONFIG_SUBMENU_VERTICAL_GAP
-    }
-
-    private fun configFlyoutStepX(): Int {
+    private fun currentFloatingLayout(): OverlayFloatingGeometry.Layout {
         val screenWidth = drawView.width.takeIf { it > 0 }
             ?: resources.displayMetrics.widthPixels
-        val availableOffset = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
-        return CONFIG_FLYOUT_STEP_X.coerceAtMost(availableOffset)
+        return OverlayFloatingGeometry.layout(
+            groupX = floatingGroupX,
+            groupY = floatingGroupY,
+            autoCaptureEnabled = autoCaptureEnabled,
+            screenWidth = screenWidth
+        )
     }
 
-    private fun collapsedFloatingGroupHeight(): Int {
-        return FLOATING_BUTTON_SIZE + FLOATING_MODE_GAP + FLOATING_MODE_HEIGHT +
-                FLOATING_CONFIG_GAP + CONFIG_CONTENT_HEIGHT
-    }
-
-    private fun floatingGroupHeight(): Int {
-        val collapsedHeight = collapsedFloatingGroupHeight()
-        return if (configExpanded) {
-            floatingShowY() - floatingGroupY + SHOW_CONTENT_HEIGHT
-        } else {
-            collapsedHeight
-        }
-    }
-
-    private fun defaultFloatingGroupX(): Int {
-        val screenWidth = resources.displayMetrics.widthPixels
-        return (screenWidth - FLOATING_MODE_WIDTH - FLOATING_BUTTON_MARGIN).coerceAtLeast(0)
-    }
-
-    private fun defaultFloatingGroupY(): Int {
-        val screenHeight = resources.displayMetrics.heightPixels
-        val topInset = getSystemBarSize("status_bar_height")
-        val bottomInset = getSystemBarSize("navigation_bar_height")
-        val availableHeight = (screenHeight - topInset - bottomInset).coerceAtLeast(0)
-        val visibleGroupHeight = FLOATING_CLOSE_OVERLAP + collapsedFloatingGroupHeight()
-        val visibleTop = topInset + ((availableHeight - visibleGroupHeight) / 2).coerceAtLeast(0)
-        return visibleTop + FLOATING_CLOSE_OVERLAP
+    private fun defaultFloatingGroupPosition(): OverlayFloatingGeometry.Position {
+        return OverlayFloatingGeometry.defaultGroupPosition(
+            screenWidth = resources.displayMetrics.widthPixels,
+            screenHeight = resources.displayMetrics.heightPixels,
+            topInset = getSystemBarSize("status_bar_height"),
+            bottomInset = getSystemBarSize("navigation_bar_height")
+        )
     }
 
     private fun createTutorialControls() {
@@ -843,6 +750,7 @@ class OverlayService : Service(),
     }
 
     private fun createConfigControl() {
+        val floatingLayout = currentFloatingLayout()
         configBtn = TutorialHudUi.makeControlButton(this).apply {
             visibility = View.GONE
             applyReferenceButtonBackground(this, R.drawable.btn_config_reference)
@@ -854,10 +762,10 @@ class OverlayService : Service(),
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
         }
         configParams = createHudControlParams(
-            CONFIG_CONTENT_WIDTH,
-            CONFIG_CONTENT_HEIGHT,
-            floatingConfigX(),
-            floatingConfigY()
+            OverlayFloatingGeometry.SECONDARY_WIDTH,
+            OverlayFloatingGeometry.SECONDARY_HEIGHT,
+            floatingLayout.config.x,
+            floatingLayout.config.y
         ).apply {
             gravity = Gravity.TOP or Gravity.END
         }
@@ -917,22 +825,24 @@ class OverlayService : Service(),
     }
 
     private fun createThemeControlParams(): WindowManager.LayoutParams {
+        val floatingLayout = currentFloatingLayout()
         return createHudControlParams(
-            THEME_CONTENT_WIDTH,
-            THEME_CONTENT_HEIGHT,
-            floatingSkinX(),
-            floatingSkinY()
+            OverlayFloatingGeometry.SECONDARY_WIDTH,
+            OverlayFloatingGeometry.SECONDARY_HEIGHT,
+            floatingLayout.theme.x,
+            floatingLayout.theme.y
         ).apply {
             gravity = Gravity.TOP or Gravity.END
         }
     }
 
     private fun createOpacityControlParams(): WindowManager.LayoutParams {
+        val floatingLayout = currentFloatingLayout()
         return createHudControlParams(
-            OPACITY_CONTENT_WIDTH,
-            OPACITY_CONTENT_HEIGHT,
-            floatingOpacityX(),
-            floatingOpacityY()
+            OverlayFloatingGeometry.SECONDARY_WIDTH,
+            OverlayFloatingGeometry.SECONDARY_HEIGHT,
+            floatingLayout.opacity.x,
+            floatingLayout.opacity.y
         ).apply {
             gravity = Gravity.TOP or Gravity.END
         }
@@ -1022,50 +932,54 @@ class OverlayService : Service(),
             ?: resources.displayMetrics.heightPixels
         val topInset = getSystemBarSize("status_bar_height")
         val bottomInset = getSystemBarSize("navigation_bar_height")
-        val maxX = (screenWidth - FLOATING_MODE_WIDTH).coerceAtLeast(0)
-        val minX = if (configExpanded) configFlyoutStepX() else 0
-        val minY = topInset + FLOATING_CLOSE_OVERLAP
-        val maxY = (screenHeight - bottomInset - floatingGroupHeight())
-            .coerceAtLeast(minY)
-
-        floatingGroupX = requestedX.coerceIn(minX, maxX)
-        floatingGroupY = requestedY.coerceIn(minY, maxY)
+        val constrainedPosition = OverlayFloatingGeometry.constrainGroupPosition(
+            requestedX = requestedX,
+            requestedY = requestedY,
+            screenWidth = screenWidth,
+            screenHeight = screenHeight,
+            topInset = topInset,
+            bottomInset = bottomInset,
+            configExpanded = configExpanded
+        )
+        floatingGroupX = constrainedPosition.x
+        floatingGroupY = constrainedPosition.y
+        val floatingLayout = currentFloatingLayout()
 
         if (::floatingParams.isInitialized) {
-            floatingParams.x = floatingButtonX()
-            floatingParams.y = floatingButtonY()
+            floatingParams.x = floatingLayout.button.x
+            floatingParams.y = floatingLayout.button.y
             updateOverlayView(floatingBtn, floatingParams)
         }
         if (::floatingCloseParams.isInitialized) {
-            floatingCloseParams.x = floatingGroupX
-            floatingCloseParams.y = floatingGroupY - FLOATING_CLOSE_OVERLAP
+            floatingCloseParams.x = floatingLayout.close.x
+            floatingCloseParams.y = floatingLayout.close.y
             updateOverlayView(floatingCloseBtn, floatingCloseParams)
         }
         if (::floatingModeParams.isInitialized) {
-            floatingModeParams.width = floatingModeWidth()
-            floatingModeParams.height = FLOATING_MODE_CONTENT_HEIGHT
-            floatingModeParams.x = floatingModeX()
-            floatingModeParams.y = floatingModeY()
+            floatingModeParams.width = floatingLayout.modeWidth
+            floatingModeParams.height = OverlayFloatingGeometry.MODE_CONTENT_HEIGHT
+            floatingModeParams.x = floatingLayout.mode.x
+            floatingModeParams.y = floatingLayout.mode.y
             updateOverlayView(floatingModeBtn, floatingModeParams)
         }
         if (::configParams.isInitialized) {
-            configParams.x = floatingConfigX()
-            configParams.y = floatingConfigY()
+            configParams.x = floatingLayout.config.x
+            configParams.y = floatingLayout.config.y
             updateOverlayView(configBtn, configParams)
         }
         if (::themeParams.isInitialized) {
-            themeParams.x = floatingSkinX()
-            themeParams.y = floatingSkinY()
+            themeParams.x = floatingLayout.theme.x
+            themeParams.y = floatingLayout.theme.y
             updateOverlayView(themeBtn, themeParams)
         }
         if (::opacityParams.isInitialized) {
-            opacityParams.x = floatingOpacityX()
-            opacityParams.y = floatingOpacityY()
+            opacityParams.x = floatingLayout.opacity.x
+            opacityParams.y = floatingLayout.opacity.y
             updateOverlayView(opacityBtn, opacityParams)
         }
         if (::showParams.isInitialized) {
-            showParams.x = floatingShowX()
-            showParams.y = floatingShowY()
+            showParams.x = floatingLayout.show.x
+            showParams.y = floatingLayout.show.y
             updateOverlayView(showBtn, showParams)
         }
     }
@@ -1503,10 +1417,11 @@ class OverlayService : Service(),
         if (!::floatingModeBtn.isInitialized) return
 
         if (::floatingModeParams.isInitialized) {
-            floatingModeParams.width = floatingModeWidth()
-            floatingModeParams.height = FLOATING_MODE_CONTENT_HEIGHT
-            floatingModeParams.x = floatingModeX()
-            floatingModeParams.y = floatingModeY()
+            val floatingLayout = currentFloatingLayout()
+            floatingModeParams.width = floatingLayout.modeWidth
+            floatingModeParams.height = OverlayFloatingGeometry.MODE_CONTENT_HEIGHT
+            floatingModeParams.x = floatingLayout.mode.x
+            floatingModeParams.y = floatingLayout.mode.y
             updateOverlayView(floatingModeBtn, floatingModeParams)
         }
         applyReferenceButtonBackground(
@@ -1592,11 +1507,12 @@ class OverlayService : Service(),
     }
 
     private fun createShowControlParams(): WindowManager.LayoutParams {
+        val floatingLayout = currentFloatingLayout()
         return createHudControlParams(
-            SHOW_CONTENT_WIDTH,
-            SHOW_CONTENT_HEIGHT,
-            floatingShowX(),
-            floatingShowY()
+            OverlayFloatingGeometry.SECONDARY_WIDTH,
+            OverlayFloatingGeometry.SECONDARY_HEIGHT,
+            floatingLayout.show.x,
+            floatingLayout.show.y
         ).apply {
             gravity = Gravity.TOP or Gravity.END
         }
