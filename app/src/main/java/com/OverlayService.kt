@@ -3,7 +3,6 @@ package com
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.Service
-import android.content.res.ColorStateList
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -27,7 +26,6 @@ import android.graphics.Typeface
 import android.view.Gravity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.example.glyphtrainer.AppColorTheme
 import com.example.glyphtrainer.AppThemeConfig
@@ -56,10 +54,6 @@ class OverlayService : Service(),
         const val TUTORIAL_BUTTON_MARGIN = 24
         const val TUTORIAL_CONTROL_WIDTH = 160
         const val THEME_CONTROL_WIDTH = 188
-        const val SQUARE_CONTROL_STROKE_WIDTH = 3
-        const val RECTANGULAR_CONTROL_STROKE_WIDTH = 4
-        const val SQUARE_CONTROL_CORNER_RADIUS = 18f
-        const val RECTANGULAR_CONTROL_CORNER_RADIUS = 18f
         const val SQUARE_NUMBER_TEXT_SIZE_PX = 52f
         const val TOP_CONTROL_GAP = 24
         const val TUTORIAL_CARD_WIDTH = 560
@@ -207,6 +201,7 @@ class OverlayService : Service(),
     private var creationFailed = false
     private var permissionListenerRegistered = false
     private val overlayPreferences by lazy { OverlayPreferences(this) }
+    private val controlFactory by lazy { OverlayControlFactory(this) }
 
     private data class TutorialStep(
         val bodyRes: Int,
@@ -370,15 +365,8 @@ class OverlayService : Service(),
     // =====================================================
     private fun makeMenuButton(@StringRes textRes: Int, action:()->Unit): TextView {
 
-        val v = TextView(this)
-        v.setText(textRes)
-        v.setTextColor(Color.WHITE)
-        v.textSize = 14f
-        v.setPadding(30,20,30,20)
-        v.setBackgroundColor(0xAA000000.toInt())
-        v.gravity = Gravity.CENTER
+        val v = controlFactory.createMenuButton(textRes)
         v.setOnClickListener { action() }
-        v.visibility = TextView.GONE
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -403,7 +391,7 @@ class OverlayService : Service(),
     private fun createButtons(){
 
         closeBtn = makeIconButton(R.drawable.ic_close, Color.RED){ stopSelf() }
-        styleSquareControl(closeBtn, Color.RED)
+        controlFactory.styleSquareControl(closeBtn, Color.RED, currentColorTheme)
 
         startBtn = makeIconButton(R.drawable.ic_play, Color.WHITE){
             if (enableCapture()) {
@@ -433,12 +421,12 @@ class OverlayService : Service(),
             val active = enableCapture()
             updateStartButton(active)
         }
-        styleSquareControl(resetBtn, Color.YELLOW)
+        controlFactory.styleSquareControl(resetBtn, Color.YELLOW, currentColorTheme)
 
         minimizeBtn = makeIconButton(R.drawable.ic_minimize, Color.WHITE) {
             minimizeOverlay()
         }
-        styleSquareControl(minimizeBtn, Color.WHITE)
+        controlFactory.styleSquareControl(minimizeBtn, Color.WHITE, currentColorTheme)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
             overlayPreferences.saveGlyphScales(horizontalScale, verticalScale)
@@ -471,7 +459,8 @@ class OverlayService : Service(),
         val floatingLayout = currentFloatingLayout()
 
         floatingBtn = TextView(this).apply {
-            styleFloatingRoundButton(
+            controlFactory.styleFloatingRoundButton(
+                this,
                 textSize = 42f,
                 elevationValue = 8f,
                 fillColor = Color.argb(210, 0, 75, 95),
@@ -499,14 +488,18 @@ class OverlayService : Service(),
         addOverlayView(floatingBtn, floatingParams)
 
         floatingCloseBtn = TextView(this).apply {
-            styleFloatingRoundButton(
+            controlFactory.styleFloatingRoundButton(
+                this,
                 textSize = 24f,
                 elevationValue = 10f,
                 fillColor = Color.argb(220, 150, 20, 20),
                 strokeWidth = 3,
                 strokeColor = Color.RED
             )
-            applyReferenceButtonBackground(this, R.drawable.btn_floating_close_reference)
+            controlFactory.applyReferenceButtonBackground(
+                this,
+                R.drawable.btn_floating_close_reference
+            )
             visibility = View.GONE
             setOnClickListener { stopSelf() }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
@@ -528,7 +521,7 @@ class OverlayService : Service(),
         addOverlayView(floatingCloseBtn, floatingCloseParams)
 
         floatingModeBtn = TextView(this).apply {
-            styleFloatingPillText()
+            controlFactory.styleFloatingPillText(this)
             visibility = View.GONE
             setOnClickListener {
                 autoCaptureEnabled = !autoCaptureEnabled
@@ -555,32 +548,6 @@ class OverlayService : Service(),
         applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
         updateFloatingButton()
         updateFloatingModeButton()
-    }
-
-    private fun TextView.styleFloatingRoundButton(
-        textSize: Float,
-        elevationValue: Float,
-        fillColor: Int,
-        strokeWidth: Int,
-        strokeColor: Int
-    ) {
-        this.textSize = textSize
-        setTextColor(Color.WHITE)
-        gravity = Gravity.CENTER
-        includeFontPadding = false
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(fillColor)
-            setStroke(strokeWidth, strokeColor)
-        }
-        elevation = elevationValue
-    }
-
-    private fun TextView.styleFloatingPillText() {
-        textSize = 15f
-        setTextColor(Color.WHITE)
-        gravity = Gravity.CENTER
-        includeFontPadding = false
     }
 
     private fun currentFloatingLayout(): OverlayFloatingGeometry.Layout {
@@ -753,7 +720,7 @@ class OverlayService : Service(),
         val floatingLayout = currentFloatingLayout()
         configBtn = TutorialHudUi.makeControlButton(this).apply {
             visibility = View.GONE
-            applyReferenceButtonBackground(this, R.drawable.btn_config_reference)
+            controlFactory.applyReferenceButtonBackground(this, R.drawable.btn_config_reference)
             setOnClickListener {
                 configExpanded = !configExpanded
                 applyFloatingGroupPosition(floatingGroupX, floatingGroupY)
@@ -990,56 +957,14 @@ class OverlayService : Service(),
         return if (resourceId != 0) resources.getDimensionPixelSize(resourceId) else 0
     }
 
-
-    private fun makeButton(
-        @StringRes textRes: Int,
-        textColor: Int,
-        textSize: Float = 34f,
-        action:()->Unit
-    ): TextView {
-
-        val v = TextView(this)
-        v.setText(textRes)
-        v.styleMainControlButton(textColor, textSize)
-        v.setOnClickListener{ action() }
-
-        val params = WindowManager.LayoutParams(
-            buttonSize,buttonSize,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            PixelFormat.TRANSLUCENT
-        )
-        params.gravity = Gravity.TOP or Gravity.START
-
-        addOverlayView(v, params)
-
-        when{
-            !::closeParams.isInitialized -> closeParams=params
-            !::startParams.isInitialized -> startParams=params
-            !::modeParams.isInitialized -> modeParams=params
-            !::resetParams.isInitialized -> resetParams=params
-            !::minimizeParams.isInitialized -> minimizeParams=params
-            !::zoomHXPlusParams.isInitialized -> zoomHXPlusParams=params
-            !::zoomHXMinusParams.isInitialized -> zoomHXMinusParams=params
-            !::zoomVPlusParams.isInitialized -> zoomVPlusParams=params
-            else -> zoomVMinusParams=params
-        }
-
-        return v
-    }
-
     private fun makeIconButton(
         @DrawableRes iconRes: Int,
         iconColor: Int,
         action:()->Unit
     ): TextView {
 
-        val v = TextView(this)
-        v.styleMainControlButton(iconColor, 34f)
-        v.setVectorIcon(iconRes, iconColor)
+        val v = controlFactory.createIconButton(iconRes, iconColor)
         v.setOnClickListener{ action() }
-        v.visibility = View.INVISIBLE
 
         val params = WindowManager.LayoutParams(
             buttonSize,buttonSize,
@@ -1065,56 +990,6 @@ class OverlayService : Service(),
         }
 
         return v
-    }
-
-    private fun TextView.styleMainControlButton(textColor: Int, textSize: Float) {
-        setTextColor(textColor)
-        this.textSize = textSize
-        gravity = Gravity.CENTER
-        includeFontPadding = false
-        setPadding(0, 0, 0, 0)
-        setBackgroundColor(Color.TRANSPARENT)
-    }
-
-    private fun styleSquareControl(button: TextView, contentColor: Int) {
-        styleOutlinedControl(
-            button,
-            contentColor,
-            SQUARE_CONTROL_STROKE_WIDTH,
-            SQUARE_CONTROL_CORNER_RADIUS
-        )
-    }
-
-    private fun styleRectangularControl(button: TextView, contentColor: Int) {
-        styleOutlinedControl(
-            button,
-            contentColor,
-            RECTANGULAR_CONTROL_STROKE_WIDTH,
-            RECTANGULAR_CONTROL_CORNER_RADIUS
-        )
-    }
-
-    private fun styleOutlinedControl(
-        button: TextView,
-        contentColor: Int,
-        strokeWidth: Int,
-        cornerRadius: Float
-    ) {
-        button.setTextColor(contentColor)
-        button.compoundDrawableTintList = ColorStateList.valueOf(contentColor)
-        button.background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            this.cornerRadius = cornerRadius
-            setColor(Color.TRANSPARENT)
-            setStroke(strokeWidth, AppThemeConfig.colors(currentColorTheme).outline)
-        }
-    }
-
-    private fun TextView.setVectorIcon(@DrawableRes iconRes: Int, tintColor: Int) {
-        text = null
-        val icon = ContextCompat.getDrawable(this@OverlayService, iconRes)?.mutate()
-        compoundDrawableTintList = ColorStateList.valueOf(tintColor)
-        setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null)
     }
 
     // =====================================================
@@ -1383,18 +1258,8 @@ class OverlayService : Service(),
 
     private fun applyReferencePlayButton(active: Boolean) {
         val contentColor = if (active) Color.rgb(140, 225, 45) else Color.WHITE
-        startBtn.setVectorIcon(R.drawable.ic_play, contentColor)
-        styleSquareControl(startBtn, contentColor)
-    }
-
-    private fun applyReferenceButtonBackground(
-        button: TextView,
-        @DrawableRes drawableRes: Int
-    ) {
-        button.text = null
-        button.compoundDrawableTintList = null
-        button.setCompoundDrawables(null, null, null, null)
-        button.background = ContextCompat.getDrawable(this, drawableRes)
+        controlFactory.setVectorIcon(startBtn, R.drawable.ic_play, contentColor)
+        controlFactory.styleSquareControl(startBtn, contentColor, currentColorTheme)
     }
 
     private fun updateModeButton(){
@@ -1403,14 +1268,14 @@ class OverlayService : Service(),
         modeBtn.text = glyphLimit.toString()
         modeBtn.setTextSize(TypedValue.COMPLEX_UNIT_PX, SQUARE_NUMBER_TEXT_SIZE_PX)
         modeBtn.typeface = Typeface.DEFAULT_BOLD
-        styleSquareControl(modeBtn, contentColor)
+        controlFactory.styleSquareControl(modeBtn, contentColor, currentColorTheme)
         updateFloatingButton()
     }
 
     private fun updateFloatingButton() {
         if (!::floatingBtn.isInitialized) return
 
-        applyReferenceButtonBackground(floatingBtn, glyphLimitFloatingButton())
+        controlFactory.applyReferenceButtonBackground(floatingBtn, glyphLimitFloatingButton())
     }
 
     private fun updateFloatingModeButton() {
@@ -1424,7 +1289,7 @@ class OverlayService : Service(),
             floatingModeParams.y = floatingLayout.mode.y
             updateOverlayView(floatingModeBtn, floatingModeParams)
         }
-        applyReferenceButtonBackground(
+        controlFactory.applyReferenceButtonBackground(
             floatingModeBtn,
             if (autoCaptureEnabled) {
                 R.drawable.btn_auto_reference
@@ -1478,7 +1343,7 @@ class OverlayService : Service(),
     private fun updateThemeButton() {
         if (!::themeBtn.isInitialized) return
 
-        applyReferenceButtonBackground(
+        controlFactory.applyReferenceButtonBackground(
             themeBtn,
             when (currentColorTheme) {
                 AppColorTheme.STANDARD -> R.drawable.btn_theme_reference_standard
@@ -1491,7 +1356,7 @@ class OverlayService : Service(),
     private fun updateOpacityButton() {
         if (!::opacityBtn.isInitialized) return
 
-        applyReferenceButtonBackground(opacityBtn, overlayOpacityButton())
+        controlFactory.applyReferenceButtonBackground(opacityBtn, overlayOpacityButton())
     }
 
     private fun updateShowButton() {
@@ -1500,9 +1365,10 @@ class OverlayService : Service(),
         showBtn.setText(
             if (showGlyphs) R.string.show_glyphs_on else R.string.show_glyphs_off
         )
-        styleRectangularControl(
+        controlFactory.styleRectangularControl(
             showBtn,
-            if (showGlyphs) Color.rgb(0, 220, 110) else Color.rgb(220, 65, 65)
+            if (showGlyphs) Color.rgb(0, 220, 110) else Color.rgb(220, 65, 65),
+            currentColorTheme
         )
     }
 
@@ -1568,14 +1434,14 @@ class OverlayService : Service(),
             updateShowButton()
         }
         if (::resetBtn.isInitialized) {
-            styleSquareControl(resetBtn, Color.YELLOW)
+            controlFactory.styleSquareControl(resetBtn, Color.YELLOW, currentColorTheme)
         }
         if (::minimizeBtn.isInitialized) {
-            styleSquareControl(minimizeBtn, Color.WHITE)
+            controlFactory.styleSquareControl(minimizeBtn, Color.WHITE, currentColorTheme)
         }
         if (::closeBtn.isInitialized) {
-            closeBtn.setVectorIcon(R.drawable.ic_close, Color.RED)
-            styleSquareControl(closeBtn, Color.RED)
+            controlFactory.setVectorIcon(closeBtn, R.drawable.ic_close, Color.RED)
+            controlFactory.styleSquareControl(closeBtn, Color.RED, currentColorTheme)
         }
         if (::startBtn.isInitialized) {
             updateStartButton(capturing)
