@@ -44,31 +44,8 @@ class OverlayService : Service(),
     DrawView.OverlayListener {
 
     private companion object {
-        const val PREFERENCES_NAME = "glyph_trainer_state"
         const val LOG_TAG = "GlyphTrainerOverlay"
-        const val PREF_GLYPH_LIMIT = "glyph_limit"
-        const val PREF_HORIZONTAL_SCALE = "horizontal_scale"
-        const val PREF_VERTICAL_SCALE = "vertical_scale"
-        const val PREF_AUTO_CAPTURE = "auto_capture"
-        const val PREF_FLOATING_GROUP_X = "floating_group_x"
-        const val PREF_FLOATING_GROUP_Y = "floating_group_y"
-        const val PREF_FLOATING_POSITION_LAYOUT_VERSION = "floating_position_layout_version"
-        const val PREF_OVERLAY_OPACITY_PERCENT = "overlay_opacity_percent"
-        const val PREF_SHOW_GLYPHS = "show_glyphs"
-        const val PREF_TUTORIAL_INITIALIZED = "tutorial_initialized"
-        const val PREF_SHOW_TUTORIAL_ON_LAUNCH = "show_tutorial_on_launch"
-        const val PREF_PREMIUM_ENABLED = "premium_enabled"
-        const val PREF_AUTO_CAPTURE_USES = "auto_capture_uses"
-        const val PREF_FLOATING_DRAG_USES = "floating_drag_uses"
         const val TUTORIAL_ENABLED = false
-        const val DEFAULT_GLYPH_LIMIT = 5
-        const val DEFAULT_SCALE = 1f
-        const val DEFAULT_AUTO_CAPTURE = false
-        const val DEFAULT_OVERLAY_OPACITY_PERCENT = 100
-        const val DEFAULT_SHOW_GLYPHS = true
-        const val DEFAULT_SHOW_TUTORIAL_ON_LAUNCH = false
-        const val DEFAULT_PREMIUM_ENABLED = false
-        const val FLOATING_POSITION_LAYOUT_VERSION = 1
         const val FLOATING_BUTTON_SIZE = 256
         const val FLOATING_CONTENT_BUTTON_SIZE = 224
         const val FLOATING_BUTTON_MARGIN = 24
@@ -239,14 +216,14 @@ class OverlayService : Service(),
         }
     }
 
-    private var glyphLimit = DEFAULT_GLYPH_LIMIT
-    private var horizontalScale = DEFAULT_SCALE
-    private var verticalScale = DEFAULT_SCALE
-    private var autoCaptureEnabled = DEFAULT_AUTO_CAPTURE
-    private var showTutorialOnLaunch = DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
+    private var glyphLimit = OverlayPreferences.DEFAULT_GLYPH_LIMIT
+    private var horizontalScale = OverlayPreferences.DEFAULT_SCALE
+    private var verticalScale = OverlayPreferences.DEFAULT_SCALE
+    private var autoCaptureEnabled = OverlayPreferences.DEFAULT_AUTO_CAPTURE
+    private var showTutorialOnLaunch = OverlayPreferences.DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
     private var currentColorTheme = AppThemeConfig.DEFAULT_THEME
-    private var overlayOpacityPercent = DEFAULT_OVERLAY_OPACITY_PERCENT
-    private var showGlyphs = DEFAULT_SHOW_GLYPHS
+    private var overlayOpacityPercent = OverlayPreferences.DEFAULT_OVERLAY_OPACITY_PERCENT
+    private var showGlyphs = OverlayPreferences.DEFAULT_SHOW_GLYPHS
     private var firstLaunchTutorialPending = false
     private var capturing = false
     private var replayIndex = 0
@@ -255,6 +232,7 @@ class OverlayService : Service(),
     private var overlayMinimized = false
     private var creationFailed = false
     private var permissionListenerRegistered = false
+    private val overlayPreferences by lazy { OverlayPreferences(this) }
 
     private data class TutorialStep(
         val bodyRes: Int,
@@ -322,7 +300,22 @@ class OverlayService : Service(),
         }
 
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        restorePreferences()
+        val restoredState = overlayPreferences.restore(
+            defaultFloatingGroupX = defaultFloatingGroupX(),
+            defaultFloatingGroupY = defaultFloatingGroupY()
+        )
+        firstLaunchTutorialPending = restoredState.firstLaunchTutorialPending
+        showTutorialOnLaunch = restoredState.showTutorialOnLaunch
+        currentColorTheme = restoredState.colorTheme
+        glyphLimit = restoredState.glyphLimit
+        horizontalScale = restoredState.horizontalScale
+        verticalScale = restoredState.verticalScale
+        autoCaptureEnabled = restoredState.autoCaptureEnabled
+        floatingGroupX = restoredState.floatingGroupX
+        floatingGroupY = restoredState.floatingGroupY
+        overlayOpacityPercent = restoredState.overlayOpacityPercent
+        showGlyphs = restoredState.showGlyphs
+        overlayMinimized = false
 
         createDrawLayer()
         if (creationFailed) return
@@ -449,7 +442,7 @@ class OverlayService : Service(),
             disableCapture()
 
             glyphLimit = if (glyphLimit == 5) 3 else glyphLimit + 1
-            saveGlyphLimit()
+            overlayPreferences.saveGlyphLimit(glyphLimit)
 
             drawView.setGlyphLimit(glyphLimit)
 
@@ -473,22 +466,22 @@ class OverlayService : Service(),
         styleSquareControl(minimizeBtn, Color.WHITE)
         zoomHXPlus = makeMenuButton(R.string.adjust_horizontal_increase) {
             horizontalScale = drawView.adjustHorizontal(1f)
-            saveGlyphScales()
+            overlayPreferences.saveGlyphScales(horizontalScale, verticalScale)
         }
 
         zoomHXMinus = makeMenuButton(R.string.adjust_horizontal_decrease) {
             horizontalScale = drawView.adjustHorizontal(-1f)
-            saveGlyphScales()
+            overlayPreferences.saveGlyphScales(horizontalScale, verticalScale)
         }
 
         zoomVPlus = makeMenuButton(R.string.adjust_vertical_increase) {
             verticalScale = drawView.adjustVertical(1f)
-            saveGlyphScales()
+            overlayPreferences.saveGlyphScales(horizontalScale, verticalScale)
         }
 
         zoomVMinus = makeMenuButton(R.string.adjust_vertical_decrease) {
             verticalScale = drawView.adjustVertical(-1f)
-            saveGlyphScales()
+            overlayPreferences.saveGlyphScales(horizontalScale, verticalScale)
         }
 
         zoomVMinus.post {
@@ -562,7 +555,7 @@ class OverlayService : Service(),
             visibility = View.GONE
             setOnClickListener {
                 autoCaptureEnabled = !autoCaptureEnabled
-                saveAutoCaptureMode()
+                overlayPreferences.saveAutoCaptureMode(autoCaptureEnabled)
                 updateFloatingModeButton()
             }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
@@ -876,7 +869,7 @@ class OverlayService : Service(),
             visibility = View.GONE
             setOnClickListener {
                 currentColorTheme = AppThemeConfig.nextTheme(currentColorTheme)
-                saveColorTheme()
+                overlayPreferences.saveColorTheme(currentColorTheme)
                 applyCurrentTheme()
             }
             setOnTouchListener { view, event -> handleFloatingDrag(view, event) }
@@ -892,7 +885,7 @@ class OverlayService : Service(),
             visibility = View.GONE
             setOnClickListener {
                 overlayOpacityPercent = nextOverlayOpacityPercent()
-                saveOverlayOpacity()
+                overlayPreferences.saveOverlayOpacity(overlayOpacityPercent)
                 applyOverlayOpacity()
                 updateOpacityButton()
             }
@@ -908,7 +901,7 @@ class OverlayService : Service(),
             visibility = View.GONE
             setOnClickListener {
                 showGlyphs = !showGlyphs
-                saveShowGlyphs()
+                overlayPreferences.saveShowGlyphs(showGlyphs)
                 if (!showGlyphs && ::drawView.isInitialized) {
                     drawView.hideCompletedSequence()
                     drawView.clearReplayGlyph()
@@ -1005,7 +998,7 @@ class OverlayService : Service(),
 
             MotionEvent.ACTION_UP -> {
                 if (floatingDragging) {
-                    saveFloatingGroupPosition()
+                    overlayPreferences.saveFloatingGroupPosition(floatingGroupX, floatingGroupY)
                 } else {
                     view.performClick()
                 }
@@ -1828,122 +1821,9 @@ class OverlayService : Service(),
         zoomVMinus.visibility = visibility
     }
 
-    private fun restorePreferences() {
-        val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-        firstLaunchTutorialPending = !preferences.getBoolean(
-            PREF_TUTORIAL_INITIALIZED,
-            false
-        )
-        showTutorialOnLaunch = preferences.getBoolean(
-            PREF_SHOW_TUTORIAL_ON_LAUNCH,
-            DEFAULT_SHOW_TUTORIAL_ON_LAUNCH
-        )
-        currentColorTheme = AppThemeConfig.restoreTheme(preferences)
-        glyphLimit = preferences.getInt(PREF_GLYPH_LIMIT, DEFAULT_GLYPH_LIMIT)
-            .coerceIn(3, 5)
-        horizontalScale = preferences.getFloat(PREF_HORIZONTAL_SCALE, DEFAULT_SCALE)
-            .coerceIn(0.5f, 1.8f)
-        verticalScale = preferences.getFloat(PREF_VERTICAL_SCALE, DEFAULT_SCALE)
-            .coerceIn(0.5f, 1.8f)
-        autoCaptureEnabled = preferences.getBoolean(
-            PREF_AUTO_CAPTURE,
-            DEFAULT_AUTO_CAPTURE
-        )
-        val resetFloatingPosition = preferences.getInt(
-            PREF_FLOATING_POSITION_LAYOUT_VERSION,
-            0
-        ) < FLOATING_POSITION_LAYOUT_VERSION
-        floatingGroupX = if (resetFloatingPosition) {
-            defaultFloatingGroupX()
-        } else {
-            preferences.getInt(PREF_FLOATING_GROUP_X, defaultFloatingGroupX())
-        }
-        floatingGroupY = if (resetFloatingPosition) {
-            defaultFloatingGroupY()
-        } else {
-            preferences.getInt(PREF_FLOATING_GROUP_Y, defaultFloatingGroupY())
-        }
-        overlayOpacityPercent = preferences.getInt(
-            PREF_OVERLAY_OPACITY_PERCENT,
-            DEFAULT_OVERLAY_OPACITY_PERCENT
-        ).takeIf { it == 100 || it == 80 || it == 60 }
-            ?: DEFAULT_OVERLAY_OPACITY_PERCENT
-        showGlyphs = preferences.getBoolean(PREF_SHOW_GLYPHS, DEFAULT_SHOW_GLYPHS)
-        overlayMinimized = false
-
-        preferences.edit {
-            if (resetFloatingPosition) {
-                putInt(PREF_FLOATING_GROUP_X, floatingGroupX)
-                putInt(PREF_FLOATING_GROUP_Y, floatingGroupY)
-                putInt(PREF_FLOATING_POSITION_LAYOUT_VERSION, FLOATING_POSITION_LAYOUT_VERSION)
-            }
-            if (firstLaunchTutorialPending) {
-                putBoolean(PREF_TUTORIAL_INITIALIZED, true)
-                putBoolean(PREF_SHOW_TUTORIAL_ON_LAUNCH, DEFAULT_SHOW_TUTORIAL_ON_LAUNCH)
-            }
-            if (!preferences.contains(PREF_PREMIUM_ENABLED)) {
-                putBoolean(PREF_PREMIUM_ENABLED, DEFAULT_PREMIUM_ENABLED)
-            }
-            if (!preferences.contains(PREF_AUTO_CAPTURE_USES)) {
-                putInt(PREF_AUTO_CAPTURE_USES, 0)
-            }
-            if (!preferences.contains(PREF_FLOATING_DRAG_USES)) {
-                putInt(PREF_FLOATING_DRAG_USES, 0)
-            }
-            if (!preferences.contains(AppThemeConfig.PREF_COLOR_THEME)) {
-                putString(AppThemeConfig.PREF_COLOR_THEME, AppThemeConfig.DEFAULT_THEME.name)
-            }
-        }
-    }
-
-    private fun saveGlyphLimit() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putInt(PREF_GLYPH_LIMIT, glyphLimit)
-        }
-    }
-
-    private fun saveGlyphScales() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putFloat(PREF_HORIZONTAL_SCALE, horizontalScale)
-            putFloat(PREF_VERTICAL_SCALE, verticalScale)
-        }
-    }
-
-    private fun saveAutoCaptureMode() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putBoolean(PREF_AUTO_CAPTURE, autoCaptureEnabled)
-        }
-    }
-
     private fun saveTutorialLaunchPreference() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putBoolean(PREF_SHOW_TUTORIAL_ON_LAUNCH, showTutorialOnLaunch)
-        }
-    }
-
-    private fun saveColorTheme() {
-        AppThemeConfig.saveTheme(
-            getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE),
-            currentColorTheme
-        )
-    }
-
-    private fun saveFloatingGroupPosition() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putInt(PREF_FLOATING_GROUP_X, floatingGroupX)
-            putInt(PREF_FLOATING_GROUP_Y, floatingGroupY)
-        }
-    }
-
-    private fun saveOverlayOpacity() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putInt(PREF_OVERLAY_OPACITY_PERCENT, overlayOpacityPercent)
-        }
-    }
-
-    private fun saveShowGlyphs() {
-        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
-            putBoolean(PREF_SHOW_GLYPHS, showGlyphs)
+        getSharedPreferences(OverlayPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(OverlayPreferences.PREF_SHOW_TUTORIAL_ON_LAUNCH, showTutorialOnLaunch)
         }
     }
 
