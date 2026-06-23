@@ -393,9 +393,11 @@ class OverlayService : Service(),
         closeBtn = makeIconButton(R.drawable.ic_close, Color.RED){ stopSelf() }
         controlFactory.styleSquareControl(closeBtn, Color.RED, currentColorTheme)
 
-        startBtn = makeIconButton(R.drawable.ic_play, Color.WHITE){
-            if (enableCapture()) {
-                updateStartButton(true)
+        startBtn = makeIconButton(R.drawable.ic_stop, Color.WHITE){
+            if (capturing) {
+                disableCapture()
+            } else {
+                enableCapture()
             }
         }
         applyReferencePlayButton(false)
@@ -1068,6 +1070,7 @@ class OverlayService : Service(),
         cancelSequencePresentation()
         drawView.hideCompletedSequence()
         capturing = true
+        updateStartButton(true)
 
         drawParams.flags =
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -1083,6 +1086,9 @@ class OverlayService : Service(),
     private fun disableCapture(){
 
         capturing = false
+        if (::startBtn.isInitialized) {
+            updateStartButton(false)
+        }
         mainHandler.removeCallbacks(startCaptureRunnable)
 
         if (!::drawView.isInitialized || !::drawParams.isInitialized) return
@@ -1258,7 +1264,11 @@ class OverlayService : Service(),
 
     private fun applyReferencePlayButton(active: Boolean) {
         val contentColor = if (active) Color.rgb(140, 225, 45) else Color.WHITE
-        controlFactory.setVectorIcon(startBtn, R.drawable.ic_play, contentColor)
+        controlFactory.setVectorIcon(
+            startBtn,
+            if (active) R.drawable.ic_play else R.drawable.ic_stop,
+            contentColor
+        )
         controlFactory.styleSquareControl(startBtn, contentColor, currentColorTheme)
     }
 
