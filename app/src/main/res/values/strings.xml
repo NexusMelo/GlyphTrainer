@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GlyphTrainer</string>
+    <string name="app_name">GlyphON</string>
     <string name="action_play">Jogar</string>
     <string name="action_program">Programar</string>
     <string name="pin_hint">PIN</string>
