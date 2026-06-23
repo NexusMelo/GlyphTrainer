@@ -1,4 +1,4 @@
-package com.example.glyphtrainer
+package pt.vicktor.glyphon
 
 class GlyphSignature(nodeIds: List<Int>) {
     val nodeIds: List<Int> = normalizeNodeIds(nodeIds)

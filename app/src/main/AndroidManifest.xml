@@ -34,7 +34,7 @@
         </activity>
 
         <service
-            android:name="com.OverlayService"
+            android:name=".OverlayService"
             android:exported="false" />
     </application>
 

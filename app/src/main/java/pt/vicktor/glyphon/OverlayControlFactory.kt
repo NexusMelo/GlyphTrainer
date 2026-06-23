@@ -1,4 +1,4 @@
-package com
+package pt.vicktor.glyphon
 
 import android.content.Context
 import android.content.res.ColorStateList
@@ -10,8 +10,6 @@ import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
-import com.example.glyphtrainer.AppColorTheme
-import com.example.glyphtrainer.AppThemeConfig
 
 internal class OverlayControlFactory(private val context: Context) {
 

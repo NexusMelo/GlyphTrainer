@@ -1,4 +1,4 @@
-package com
+package pt.vicktor.glyphon
 
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
@@ -27,13 +27,6 @@ import android.view.Gravity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.content.edit
-import com.example.glyphtrainer.AppColorTheme
-import com.example.glyphtrainer.AppThemeConfig
-import com.example.glyphtrainer.AppThemeColors
-import com.example.glyphtrainer.AppMode
-import com.example.glyphtrainer.DrawView
-import com.example.glyphtrainer.R
-import com.example.glyphtrainer.TutorialHudUi
 import kotlin.math.abs
 
 class OverlayService : Service(),

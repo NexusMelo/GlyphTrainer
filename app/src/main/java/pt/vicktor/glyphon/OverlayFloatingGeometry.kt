@@ -1,4 +1,4 @@
-package com
+package pt.vicktor.glyphon
 
 internal object OverlayFloatingGeometry {
 

@@ -1,9 +1,7 @@
-package com
+package pt.vicktor.glyphon
 
 import android.content.Context
 import androidx.core.content.edit
-import com.example.glyphtrainer.AppColorTheme
-import com.example.glyphtrainer.AppThemeConfig
 
 internal data class OverlayPreferenceState(
     val firstLaunchTutorialPending: Boolean,

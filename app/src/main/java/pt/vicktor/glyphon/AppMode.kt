@@ -1,4 +1,4 @@
-package com.example.glyphtrainer
+package pt.vicktor.glyphon
 
 object AppMode {
 

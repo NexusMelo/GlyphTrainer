@@ -1,4 +1,4 @@
-package com.example.glyphtrainer
+package pt.vicktor.glyphon
 
 import android.content.Intent
 import android.os.Bundle

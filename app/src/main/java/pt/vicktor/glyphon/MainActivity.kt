@@ -1,4 +1,4 @@
-package com.example.glyphtrainer
+package pt.vicktor.glyphon
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -12,7 +12,6 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.hypot
-import com.OverlayService
 
 class MainActivity : Activity() {
     private val OVERLAY_REQ_CODE = 1234

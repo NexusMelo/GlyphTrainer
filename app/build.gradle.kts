@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.glyphtrainer"
+    namespace = "pt.vicktor.glyphon"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -11,7 +11,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.glyphtrainer"
+        applicationId = "pt.vicktor.glyphon"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
