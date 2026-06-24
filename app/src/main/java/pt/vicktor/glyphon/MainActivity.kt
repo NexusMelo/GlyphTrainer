@@ -2,6 +2,7 @@ package pt.vicktor.glyphon
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.*
@@ -31,10 +32,22 @@ class MainActivity : Activity() {
         if (hasOverlayPermission) {
             startOverlay()
         } else {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-            intent.data = Uri.fromParts("package", packageName, null)
-            startActivityForResult(intent, OVERLAY_REQ_CODE)
+            showOverlayPermissionExplanation()
         }
+    }
+
+    private fun showOverlayPermissionExplanation() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.overlay_permission_title)
+            .setMessage(R.string.overlay_permission_message)
+            .setPositiveButton(R.string.action_continue) { _, _ ->
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                intent.data = Uri.fromParts("package", packageName, null)
+                startActivityForResult(intent, OVERLAY_REQ_CODE)
+            }
+            .setNegativeButton(R.string.action_cancel) { _, _ -> finish() }
+            .setCancelable(false)
+            .show()
     }
 
     override fun onActivityResult(

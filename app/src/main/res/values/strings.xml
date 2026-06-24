@@ -5,6 +5,10 @@
     <string name="pin_hint">PIN</string>
     <string name="action_enter">Entrar</string>
     <string name="error_invalid_pin">PIN incorreto</string>
+    <string name="overlay_permission_title">Permissão necessária</string>
+    <string name="overlay_permission_message">O GlyphON precisa da permissão &quot;Mostrar sobre outras aplicações&quot; para apresentar a área de treino.\n\nO GlyphON é uma aplicação independente e não está afiliado nem autorizado por aplicações ou jogos de terceiros.</string>
+    <string name="action_continue">Continuar</string>
+    <string name="action_cancel">Cancelar</string>
     <string name="adjust_horizontal_increase">H +</string>
     <string name="adjust_horizontal_decrease">H -</string>
     <string name="adjust_vertical_increase">V +</string>
