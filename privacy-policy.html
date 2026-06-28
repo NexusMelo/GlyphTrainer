@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GlyphON Privacy Policy</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050708;
+      --panel: #101619;
+      --text: #e9f7f3;
+      --muted: #a8bbb5;
+      --accent: #25e68a;
+      --border: #1d6f50;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #0d1e22 0, var(--bg) 48rem);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    article {
+      background: rgba(16, 22, 25, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px;
+      box-shadow: 0 18px 64px rgba(0, 0, 0, 0.35);
+    }
+
+    h1, h2 {
+      line-height: 1.2;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: var(--accent);
+      font-size: 2.2rem;
+    }
+
+    h2 {
+      margin-top: 2rem;
+      color: var(--text);
+      font-size: 1.25rem;
+    }
+
+    p, li {
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .updated {
+      color: var(--text);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <article>
+      <h1>GlyphON Privacy Policy</h1>
+      <p class="updated">Last updated: June 28, 2026</p>
+
+      <h2>Introduction</h2>
+      <p>
+        GlyphON is an Android training overlay app. It helps users practise glyph sequences by showing an on-screen overlay, capture area, replay controls, preview area, and related configuration controls.
+      </p>
+      <p>
+        This Privacy Policy explains what information GlyphON collects, how permissions are used, where data is stored, and what choices users have. GlyphON is an independent application and is not affiliated with, endorsed by, or authorized by any third-party app or game.
+      </p>
+
+      <h2>Information collected</h2>
+      <p>
+        GlyphON does not collect personal information, account information, contact details, location data, photos, media files, microphone audio, camera data, advertising identifiers, analytics events, or crash reports.
+      </p>
+      <p>
+        The app processes user touch input locally while the overlay is active so it can capture and replay glyph strokes inside the training area. This input is used only for the app's training functionality on the device.
+      </p>
+
+      <h2>Permissions used</h2>
+      <p>
+        GlyphON currently declares the following Android permission:
+      </p>
+      <ul>
+        <li><strong>SYSTEM_ALERT_WINDOW</strong> — allows GlyphON to display its training overlay above other apps after the user grants the Android “Display over other apps” permission.</li>
+      </ul>
+      <p>
+        GlyphON does not currently declare internet, location, camera, microphone, contacts, storage, notification, accessibility, or foreground service permissions.
+      </p>
+
+      <h2>SYSTEM_ALERT_WINDOW</h2>
+      <p>
+        GlyphON uses the <strong>SYSTEM_ALERT_WINDOW</strong> permission to show floating controls and a drawing/capture overlay on top of the current screen. This is essential to the app's purpose: the user needs to see and interact with the GlyphON training interface while another screen is visible underneath.
+      </p>
+      <p>
+        The overlay permission is used to create and manage visible overlay elements such as the capture bounds, preview area, play/reset/minimize/close controls, configuration controls, and replay display. GlyphON does not use this permission to read private content from other apps, collect personal data, or transmit information elsewhere.
+      </p>
+
+      <h2>Foreground Service</h2>
+      <p>
+        The current version of GlyphON includes an overlay service for managing the on-screen overlay, but it does not declare Android foreground service permissions in the application manifest. If this changes in a future release, this policy should be updated to describe the foreground service behavior and any related notification.
+      </p>
+
+      <h2>Data storage</h2>
+      <p>
+        GlyphON stores app preferences locally on the user's device using Android shared preferences. These settings may include options such as the selected color theme, glyph count, overlay scale, overlay opacity, auto-capture setting, floating control position, tutorial state, and whether glyph display is enabled.
+      </p>
+      <p>
+        This data remains on the device as part of the app's local configuration. GlyphON does not upload this information to a server.
+      </p>
+
+      <h2>Third-party services</h2>
+      <p>
+        GlyphON does not currently integrate third-party analytics, advertising networks, crash reporting services, cloud storage, or external data collection services.
+      </p>
+
+      <h2>User rights</h2>
+      <p>
+        Because GlyphON does not collect or transmit personal information, there is no server-side account data to access, export, correct, or delete. Users can control local app data by changing settings inside the app, clearing the app's data in Android system settings, or uninstalling the app.
+      </p>
+      <p>
+        Users can revoke the “Display over other apps” permission at any time in Android system settings. Revoking this permission will prevent the overlay functionality from working.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        For privacy questions about GlyphON, contact the developer through the Google Play listing or the repository owner profile associated with the published project.
+      </p>
+    </article>
+  </main>
+</body>
+</html>
