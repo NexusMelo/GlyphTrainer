@@ -1716,7 +1716,8 @@ class OverlayService : Service(),
                 overlayPermissionListener
             )
             permissionListenerRegistered = true
-        } catch (_: SecurityException) {
+        } catch (exception: SecurityException) {
+            Log.e(LOG_TAG, "AppOpsManager.startWatchingMode failed", exception)
             stopSelf()
         }
     }
@@ -1727,7 +1728,8 @@ class OverlayService : Service(),
         val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         try {
             appOps.stopWatchingMode(overlayPermissionListener)
-        } catch (_: SecurityException) {
+        } catch (exception: SecurityException) {
+            Log.w(LOG_TAG, "AppOpsManager.stopWatchingMode failed", exception)
             // Permission state may already be unavailable during teardown.
         }
         permissionListenerRegistered = false

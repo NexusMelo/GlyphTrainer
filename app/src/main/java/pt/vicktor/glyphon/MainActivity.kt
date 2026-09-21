@@ -420,6 +420,13 @@ class DrawView : View {
             return true
 
         if(!captureEnabled) return true
+        if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            gestureActive = false
+            gestureDistance = 0f
+            currentPath.reset()
+            invalidate()
+            return true
+        }
         if(event.pointerCount > 1) return true
 
         when(event.actionMasked){
@@ -462,8 +469,7 @@ class DrawView : View {
                 lastY = event.y
             }
 
-            MotionEvent.ACTION_UP,
-            MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 finishGesture()
             }
         }
