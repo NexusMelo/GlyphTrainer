@@ -41,6 +41,7 @@ class OverlayService : Service(),
         const val GLYPH_DISPLAY_DELAY_MS = 2_000L
         const val REPLAY_START_DELAY_MS = 1_000L
         const val REPLAY_GLYPH_DURATION_MS = 1_750L
+        const val REPLAY_FINAL_HOLD_MS = 5_000L
         const val REPLAY_GLYPH_GAP_MS = 0L
         const val REPLAY_PREPARE_DELAY_MS = GLYPH_DISPLAY_DELAY_MS - REPLAY_START_DELAY_MS
         const val TUTORIAL_BUTTON_HEIGHT = 64
@@ -144,13 +145,23 @@ class OverlayService : Service(),
                 return
             }
 
+            if (replayFinalHold) {
+                if (showGlyphs) {
+                    minimizeOverlay()
+                } else {
+                    cancelReplay()
+                }
+                return
+            }
+
             if (replayGlyphVisible) {
                 drawView.clearReplayGlyph()
                 replayGlyphVisible = false
 
                 if (replayIndex >= glyphLimit) {
                     if (showGlyphs) {
-                        minimizeOverlay()
+                        replayFinalHold = true
+                        mainHandler.postDelayed(this, REPLAY_FINAL_HOLD_MS)
                     } else {
                         cancelReplay()
                     }
@@ -189,6 +200,7 @@ class OverlayService : Service(),
     private var capturing = false
     private var replayIndex = 0
     private var replayGlyphVisible = false
+    private var replayFinalHold = false
     private var tutorialStepIndex = 0
     private var overlayMinimized = false
     private var creationFailed = false
@@ -1119,6 +1131,7 @@ class OverlayService : Service(),
         mainHandler.removeCallbacks(replayStepRunnable)
         replayIndex = 0
         replayGlyphVisible = false
+        replayFinalHold = false
 
         if (::drawView.isInitialized) {
             drawView.clearReplayGlyph()
