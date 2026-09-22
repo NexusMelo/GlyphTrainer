@@ -159,7 +159,7 @@ class DrawView : View {
     override fun isOpaque() = false
 
     private var touchCount = 0
-    private var maxTouches = 5
+    private var maxTouches = OverlayMainGeometry.MAX_PREVIEW_SLOTS
     private var captureEnabled = false
     private var gestureActive = false
     private var completedSequenceVisible = false
@@ -170,44 +170,33 @@ class DrawView : View {
     private val MIN_GESTURE_DISTANCE = 40f
     private var gestureDistance = 0f
 
-    private val MAX_SLOTS = 5
-    private val GLYPH_BOX_VERTICAL_OFFSET = 60f
-    private val PREVIEW_TO_CONTROLS_GAP = 7f
-    private val MAIN_CONTROL_SIZE = 96f
-    private val CONTROLS_TO_CAPTURE_GAP = 10.4f
-    private val CAPTURE_HORIZONTAL_MARGIN = 60f
-    private val CAPTURE_HEIGHT_FRACTION = 0.48f
-    private val CAPTURE_EXTRA_HEIGHT = 120f
-    private val CAPTURE_CONTENT_INSET = 60f
     private val STATIC_OVERLAY_COMPENSATION = -40f
     private val drawArea = RectF()
     private var stableLayoutHeight = 0
     private var goY = 0f
+    private var indicatorY = 0f
 
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){
         if (stableLayoutHeight == 0) {
             stableLayoutHeight = h
         }
         val layoutHeight = minOf(h, stableLayoutHeight)
-        val glyphSize = w / 6f
-        val previewBottom = 120f + GLYPH_BOX_VERTICAL_OFFSET + glyphSize * 0.55f + glyphSize
-        val controlsTop = (previewBottom + PREVIEW_TO_CONTROLS_GAP).toInt()
-        val captureTop = controlsTop + MAIN_CONTROL_SIZE + CONTROLS_TO_CAPTURE_GAP
-        val captureHeight = layoutHeight * CAPTURE_HEIGHT_FRACTION + CAPTURE_EXTRA_HEIGHT
+        val geometry = OverlayMainGeometry.calculate(w, layoutHeight)
 
         captureAreaBounds.set(
-            CAPTURE_HORIZONTAL_MARGIN,
-            captureTop,
-            w - CAPTURE_HORIZONTAL_MARGIN,
-            captureTop + captureHeight
+            geometry.capture.left,
+            geometry.capture.top,
+            geometry.capture.right,
+            geometry.capture.bottom
         )
         drawArea.set(
-            captureAreaBounds.left + CAPTURE_CONTENT_INSET,
-            captureAreaBounds.top + CAPTURE_CONTENT_INSET,
-            captureAreaBounds.right - CAPTURE_CONTENT_INSET,
-            captureAreaBounds.bottom - CAPTURE_CONTENT_INSET
+            geometry.content.left,
+            geometry.content.top,
+            geometry.content.right,
+            geometry.content.bottom
         )
         goY = layoutHeight * 0.54f - STATIC_OVERLAY_COMPENSATION
+        indicatorY = geometry.indicatorY
         setWillNotDraw(false)
         // área interna com proporção fixa para o glyph
         val glyphAspect = 1.6f   // altura / largura
@@ -237,7 +226,7 @@ class DrawView : View {
         paintGlowMid.strokeWidth = base * 0.055f
         paintGlowOuter.strokeWidth = base * 0.08f
 
-        listener?.onAreaUpdated(drawArea, controlsTop)
+        listener?.onAreaUpdated(drawArea, geometry.controlsTop)
     }
 
     // ---------- PAINTS ----------
@@ -292,7 +281,7 @@ class DrawView : View {
     }
 
     private var currentPath = Path()
-    private val saved = MutableList<Path?>(MAX_SLOTS){ null }
+    private val saved = MutableList<Path?>(OverlayMainGeometry.MAX_PREVIEW_SLOTS){ null }
 
     private var lastX = 0f
     private var lastY = 0f
@@ -310,29 +299,21 @@ class DrawView : View {
                 drawSavedPath(canvas, path, captureAreaBounds)
             }
 
-        val glyphSize = width / 6f
-        val spacing = glyphSize * 1.2f
-        val groupWidth = glyphSize + spacing * (maxTouches - 1)
-        val startX = if (maxTouches == MAX_SLOTS) 40f else (width - groupWidth) / 2f
-
         for (slot in 0 until maxTouches) {
-
-            val x = startX + slot * spacing
-            val y = 120f + GLYPH_BOX_VERTICAL_OFFSET
-            val boxY = y + glyphSize * 0.55f
+            val preview = OverlayMainGeometry.previewBounds(width, maxTouches, slot)
 
             // desenhar contorno exatamente na mesma zona do desenho
             canvas.drawRect(
-                x,
-                boxY,
-                x + glyphSize,
-                boxY + glyphSize,
+                preview.left,
+                preview.top,
+                preview.right,
+                preview.bottom,
                 slotBorderPaint
             )
 
             val path = saved[slot] ?: continue
 
-            previewBoxBounds.set(x, boxY, x + glyphSize, boxY + glyphSize)
+            previewBoxBounds.set(preview.left, preview.top, preview.right, preview.bottom)
             drawSavedPath(canvas, path, previewBoxBounds)
         }
 
@@ -345,7 +326,7 @@ class DrawView : View {
         canvas.drawText(
             "$touchCount / $maxTouches",
             drawArea.centerX()-40f,
-            captureAreaBounds.bottom + 70f,
+            indicatorY,
             textPaint
         )
         if (goVisible) {

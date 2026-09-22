@@ -108,8 +108,8 @@ class OverlayService : Service(),
     private lateinit var tutorialLayerParams: WindowManager.LayoutParams
 
     private val drawArea = RectF()
-    private val buttonSize = 96
-    private val gap = 24
+    private val buttonSize = OverlayMainGeometry.MAIN_CONTROL_SIZE
+    private val gap = OverlayMainGeometry.MAIN_CONTROL_GAP
     private val floatingTouchSlop by lazy {
         ViewConfiguration.get(this).scaledTouchSlop
     }
@@ -1012,7 +1012,8 @@ class OverlayService : Service(),
 
     private fun positionOverlayControls(controlsTop: Int) {
         val screenWidth = drawView.width
-        val controlsWidth = buttonSize * 5 + gap * 4
+        val controlsWidth = buttonSize * OverlayMainGeometry.MAIN_CONTROL_COUNT +
+            gap * (OverlayMainGeometry.MAIN_CONTROL_COUNT - 1)
         val controlsStartX = (screenWidth - controlsWidth) / 2
 
         modeParams.x = controlsStartX
