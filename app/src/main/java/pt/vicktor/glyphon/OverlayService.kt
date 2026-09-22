@@ -1677,9 +1677,11 @@ class OverlayService : Service(),
             wm.updateViewLayout(view, params)
         } catch (exception: IllegalArgumentException) {
             Log.e(LOG_TAG, "WindowManager.updateViewLayout failed", exception)
+            creationFailed = true
             stopSelf()
         } catch (exception: SecurityException) {
             Log.e(LOG_TAG, "WindowManager.updateViewLayout failed", exception)
+            creationFailed = true
             stopSelf()
         }
     }
