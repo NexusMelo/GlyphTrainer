@@ -138,7 +138,7 @@ class DrawView : View {
     }
 
     interface OverlayListener {
-        fun onAreaUpdated(area: RectF)
+        fun onAreaUpdated(area: RectF, controlsTop: Int)
         fun onCaptureFinished()
     }
 
@@ -171,33 +171,43 @@ class DrawView : View {
     private var gestureDistance = 0f
 
     private val MAX_SLOTS = 5
-    private val MAIN_OVERLAY_VERTICAL_OFFSET = 100f
     private val GLYPH_BOX_VERTICAL_OFFSET = 60f
-    private val STATIC_OVERLAY_COMPENSATION = 60f
+    private val PREVIEW_TO_CONTROLS_GAP = 7f
+    private val MAIN_CONTROL_SIZE = 96f
+    private val CONTROLS_TO_CAPTURE_GAP = 10.4f
+    private val CAPTURE_HORIZONTAL_MARGIN = 60f
+    private val CAPTURE_HEIGHT_FRACTION = 0.48f
+    private val CAPTURE_EXTRA_HEIGHT = 120f
+    private val CAPTURE_CONTENT_INSET = 60f
+    private val STATIC_OVERLAY_COMPENSATION = -40f
     private val drawArea = RectF()
     private var stableLayoutHeight = 0
+    private var goY = 0f
 
     override fun onSizeChanged(w:Int,h:Int,oldw:Int,oldh:Int){
-        val margin = 120f
         if (stableLayoutHeight == 0) {
             stableLayoutHeight = h
         }
         val layoutHeight = minOf(h, stableLayoutHeight)
-
-        drawArea.set(
-            margin,
-            layoutHeight*0.30f + MAIN_OVERLAY_VERTICAL_OFFSET,
-            w-margin,
-            layoutHeight*0.78f + MAIN_OVERLAY_VERTICAL_OFFSET
-        )
-        val expand = 60f  // tamanho extra do quadrado verde
+        val glyphSize = w / 6f
+        val previewBottom = 120f + GLYPH_BOX_VERTICAL_OFFSET + glyphSize * 0.55f + glyphSize
+        val controlsTop = (previewBottom + PREVIEW_TO_CONTROLS_GAP).toInt()
+        val captureTop = controlsTop + MAIN_CONTROL_SIZE + CONTROLS_TO_CAPTURE_GAP
+        val captureHeight = layoutHeight * CAPTURE_HEIGHT_FRACTION + CAPTURE_EXTRA_HEIGHT
 
         captureAreaBounds.set(
-            drawArea.left - expand,
-            drawArea.top - expand,
-            drawArea.right + expand,
-            drawArea.bottom + expand
+            CAPTURE_HORIZONTAL_MARGIN,
+            captureTop,
+            w - CAPTURE_HORIZONTAL_MARGIN,
+            captureTop + captureHeight
         )
+        drawArea.set(
+            captureAreaBounds.left + CAPTURE_CONTENT_INSET,
+            captureAreaBounds.top + CAPTURE_CONTENT_INSET,
+            captureAreaBounds.right - CAPTURE_CONTENT_INSET,
+            captureAreaBounds.bottom - CAPTURE_CONTENT_INSET
+        )
+        goY = layoutHeight * 0.54f - STATIC_OVERLAY_COMPENSATION
         setWillNotDraw(false)
         // área interna com proporção fixa para o glyph
         val glyphAspect = 1.6f   // altura / largura
@@ -227,17 +237,10 @@ class DrawView : View {
         paintGlowMid.strokeWidth = base * 0.055f
         paintGlowOuter.strokeWidth = base * 0.08f
 
-        listener?.onAreaUpdated(drawArea)
+        listener?.onAreaUpdated(drawArea, controlsTop)
     }
 
     // ---------- PAINTS ----------
-
-    private val borderPaint = Paint().apply {
-        color = AppThemeConfig.colors(AppThemeConfig.DEFAULT_THEME).outline
-        strokeWidth = 5f
-        style = Paint.Style.STROKE
-        isAntiAlias = true
-    }
 
     private val textPaint = Paint().apply {
         color = Color.YELLOW
@@ -297,10 +300,9 @@ class DrawView : View {
     // =====================================================
 
     @SuppressLint("DrawAllocation")
-    override fun onDraw(canvas: Canvas) {
+        override fun onDraw(canvas: Canvas) {
 
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-            canvas.drawRect(captureAreaBounds, borderPaint)
 
         replayGlyphIndex
             ?.let(saved::getOrNull)
@@ -343,14 +345,14 @@ class DrawView : View {
         canvas.drawText(
             "$touchCount / $maxTouches",
             drawArea.centerX()-40f,
-            drawArea.bottom+90f-STATIC_OVERLAY_COMPENSATION,
+            captureAreaBounds.bottom + 70f,
             textPaint
         )
         if (goVisible) {
             canvas.drawText(
                 "GO",
                 drawArea.centerX(),
-                drawArea.centerY()-STATIC_OVERLAY_COMPENSATION,
+                goY,
                 goPaint
             )
         }
@@ -358,7 +360,7 @@ class DrawView : View {
             canvas.drawText(
                 context.getString(R.string.program_mode_label),
                 width / 2f,
-                drawArea.top - 40f,
+                drawArea.top + 60f,
                 programPaint
             )
         }
@@ -554,7 +556,6 @@ class DrawView : View {
 
     fun setAppColorTheme(theme: AppColorTheme) {
         val colors = AppThemeConfig.colors(theme)
-        borderPaint.color = colors.outline
         slotBorderPaint.color = colors.accent
         invalidate()
     }

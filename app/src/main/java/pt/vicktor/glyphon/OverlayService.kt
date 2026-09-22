@@ -113,7 +113,7 @@ class OverlayService : Service(),
     private val floatingTouchSlop by lazy {
         ViewConfiguration.get(this).scaledTouchSlop
     }
-    private var fixedControlsY: Int? = null
+    private var latestControlsTop: Int? = null
     private var floatingGroupX = OverlayFloatingGeometry.BUTTON_MARGIN
     private var floatingGroupY = OverlayFloatingGeometry.BUTTON_TOP
     private var configExpanded = false
@@ -455,9 +455,7 @@ class OverlayService : Service(),
         }
 
         zoomVMinus.post {
-            if (!drawArea.isEmpty) {
-                positionOverlayControls(drawArea)
-            }
+            latestControlsTop?.let(::positionOverlayControls)
         }
     }
 
@@ -1003,34 +1001,30 @@ class OverlayService : Service(),
     // POSITIONING
     // =====================================================
 
-    override fun onAreaUpdated(area: RectF) {
+    override fun onAreaUpdated(area: RectF, controlsTop: Int) {
         drawArea.set(area)
+        latestControlsTop = controlsTop
 
         if (!::zoomVMinus.isInitialized || !zoomVMinus.isAttachedToWindow) return
 
-        positionOverlayControls(drawArea)
+        positionOverlayControls(controlsTop)
     }
 
-    private fun positionOverlayControls(area: RectF) {
+    private fun positionOverlayControls(controlsTop: Int) {
         val screenWidth = drawView.width
         val controlsWidth = buttonSize * 5 + gap * 4
         val controlsStartX = (screenWidth - controlsWidth) / 2
-        val controlsY = fixedControlsY ?: (
-            area.top - buttonSize - 70f
-        ).toInt().also {
-            fixedControlsY = it
-        }
 
         modeParams.x = controlsStartX
-        modeParams.y = controlsY
+        modeParams.y = controlsTop
         startParams.x = controlsStartX + buttonSize + gap
-        startParams.y = controlsY
+        startParams.y = controlsTop
         resetParams.x = controlsStartX + (buttonSize + gap) * 2
-        resetParams.y = controlsY
+        resetParams.y = controlsTop
         minimizeParams.x = controlsStartX + (buttonSize + gap) * 3
-        minimizeParams.y = controlsY
+        minimizeParams.y = controlsTop
         closeParams.x = controlsStartX + (buttonSize + gap) * 4
-        closeParams.y = controlsY
+        closeParams.y = controlsTop
 
         updateOverlayView(closeBtn, closeParams)
         updateOverlayView(startBtn, startParams)
